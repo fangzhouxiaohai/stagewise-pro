@@ -10,6 +10,7 @@ import { UserExperienceService } from './services/experience';
 import { FilePickerService } from './services/file-picker';
 import { FileTreeService } from './services/file-tree';
 import { AppMenuService } from './services/app-menu';
+import { setUiLanguage } from '@shared/ui-language';
 import { URIHandlerService } from './services/uri-handler';
 import { IdentifierService } from './services/identifier';
 import { Logger } from './services/logger';
@@ -597,11 +598,18 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       );
   });
 
-  const _appMenuService = new AppMenuService(
+  // 原生应用菜单在构建时读取界面语言；语言偏好变化后重建菜单。
+  setUiLanguage(preferencesService.get().general.language);
+  const appMenuService = new AppMenuService(
     logger,
     authService,
     windowLayoutService,
   );
+  preferencesService.addListener((newPrefs, oldPrefs) => {
+    if (newPrefs.general.language === oldPrefs.general.language) return;
+    setUiLanguage(newPrefs.general.language);
+    appMenuService.refresh();
+  });
 
   const modelProviderService = new ModelProviderService(
     telemetryService,

@@ -10,6 +10,7 @@ import {
   type BaseWindow,
 } from 'electron';
 import type { SearchUtils } from './search-utils';
+import { isChineseUi, tMenu } from '@shared/ui-language';
 
 type MenuItem = ElectronMenuItem | ElectronMenuItemConstructorOptions;
 
@@ -86,7 +87,7 @@ export class ContextMenuWebContent {
       ...(params.misspelledWord
         ? [
             {
-              label: 'Add to Dictionary',
+              label: tMenu('Add to Dictionary', '添加到词典'),
               click: () => {
                 this.webContents.session.addWordToSpellCheckerDictionary(
                   params.misspelledWord,
@@ -97,7 +98,11 @@ export class ContextMenuWebContent {
         : []),
       {
         type: 'header',
-        label: `${params.dictionarySuggestions.length === 0 ? 'No ' : ''}Suggestion${params.dictionarySuggestions.length > 1 ? 's' : ''}`,
+        label: isChineseUi()
+          ? params.dictionarySuggestions.length === 0
+            ? '无拼写建议'
+            : '拼写建议'
+          : `${params.dictionarySuggestions.length === 0 ? 'No ' : ''}Suggestion${params.dictionarySuggestions.length > 1 ? 's' : ''}`,
         enabled: false,
         visible: !!params.misspelledWord,
       },
@@ -115,7 +120,7 @@ export class ContextMenuWebContent {
   private buildBasicEditMenuItems = (params: ContextMenuParams): MenuItem[] => {
     const items: MenuItem[] = [
       {
-        label: 'Undo',
+        label: tMenu('Undo', '撤销'),
         visible: params.isEditable,
         enabled: params.editFlags.canUndo,
         click: () => {
@@ -123,7 +128,7 @@ export class ContextMenuWebContent {
         },
       },
       {
-        label: 'Redo',
+        label: tMenu('Redo', '重做'),
         visible: params.editFlags.canRedo,
         click: () => {
           this.webContents.redo();
@@ -134,21 +139,21 @@ export class ContextMenuWebContent {
         visible: params.isEditable,
       },
       {
-        label: 'Paste',
+        label: tMenu('Paste', '粘贴'),
         visible: params.editFlags.canPaste && clipboard.readText().length > 0,
         click: () => {
           this.webContents.paste();
         },
       },
       {
-        label: 'Select All',
+        label: tMenu('Select All', '全选'),
         visible: params.editFlags.canSelectAll,
         click: () => {
           this.webContents.selectAll();
         },
       },
       {
-        label: 'Cut',
+        label: tMenu('Cut', '剪切'),
         visible: params.editFlags.canCut,
         click: () => {
           clipboard.writeText(params.selectionText);
@@ -156,7 +161,7 @@ export class ContextMenuWebContent {
         },
       },
       {
-        label: 'Copy',
+        label: tMenu('Copy', '复制'),
         visible: params.editFlags.canCopy && params.linkURL.length === 0,
         click: () => {
           clipboard.writeText(params.selectionText);
@@ -189,27 +194,39 @@ export class ContextMenuWebContent {
     }
     label = label.charAt(0).toUpperCase() + label.slice(1);
 
+    const mediaName = isChineseUi()
+      ? params.mediaType === 'image'
+        ? '图片'
+        : params.mediaType === 'video'
+          ? '视频'
+          : '音频'
+      : label;
+
     const items: MenuItem[] = [
       {
-        label: `Open ${label} in New Tab`,
+        label: isChineseUi()
+          ? `在新标签页中打开${mediaName}`
+          : `Open ${label} in New Tab`,
         click: () => {
           this.utils.openInNewTab(params.srcURL);
         },
       },
       {
-        label: `Save ${label} as...`,
+        label: isChineseUi() ? `将${mediaName}另存为…` : `Save ${label} as...`,
         click: () => {
           this.webContents.downloadURL(params.srcURL);
         },
       },
       {
-        label: `Copy ${label} URL`,
+        label: isChineseUi() ? `复制${mediaName}地址` : `Copy ${label} URL`,
         click: () => {
           clipboard.writeText(params.srcURL);
         },
       },
       {
-        label: `Copy ${label} to Clipboard`,
+        label: isChineseUi()
+          ? `复制${mediaName}到剪贴板`
+          : `Copy ${label} to Clipboard`,
         click: () => {
           fetch(params.srcURL)
             .then((res) => res.arrayBuffer())
@@ -233,7 +250,7 @@ export class ContextMenuWebContent {
 
     const items: MenuItem[] = [
       {
-        label: 'Open in new tab',
+        label: tMenu('Open in new tab', '在新标签页中打开'),
         click: () => {
           this.utils.openInNewTab(params.linkURL);
         },
@@ -242,13 +259,13 @@ export class ContextMenuWebContent {
         type: 'separator',
       },
       {
-        label: 'Copy URL',
+        label: tMenu('Copy URL', '复制链接地址'),
         click: () => {
           clipboard.writeText(params.linkURL);
         },
       },
       {
-        label: 'Copy Text',
+        label: tMenu('Copy Text', '复制文本'),
         click: () => {
           clipboard.writeText(params.selectionText);
         },
@@ -269,8 +286,11 @@ export class ContextMenuWebContent {
       {
         visible:
           params.selectionText.length > 0 && params.selectionText.length < 512,
-        label:
-          params.selectionText.length < 20
+        label: isChineseUi()
+          ? params.selectionText.length < 20
+            ? `用 ${engineName} 搜索“${params.selectionText}”`
+            : `使用 ${engineName} 搜索`
+          : params.selectionText.length < 20
             ? `Search ${engineName} for "${params.selectionText}"`
             : `Search with ${engineName}`,
         click: () => {
@@ -285,7 +305,7 @@ export class ContextMenuWebContent {
   private buildSystemMenuItems = (_params: ContextMenuParams): MenuItem[] => {
     const items: MenuItem[] = [
       {
-        label: 'Print/Save page',
+        label: tMenu('Print/Save page', '打印/保存页面'),
         click: () => {
           this.webContents.print();
         },
@@ -298,7 +318,7 @@ export class ContextMenuWebContent {
   private buildDevToolsItems = (params: ContextMenuParams): MenuItem[] => {
     const items: MenuItem[] = [
       {
-        label: 'Inspect Element',
+        label: tMenu('Inspect Element', '检查元素'),
         click: () => {
           this.utils.inspectElement(params.x, params.y);
         },

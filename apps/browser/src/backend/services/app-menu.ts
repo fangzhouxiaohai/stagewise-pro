@@ -5,6 +5,7 @@ import type { WindowLayoutService } from './window-layout';
 import type { AuthService } from './auth';
 import { fileURLToPath } from 'node:url';
 import { DisposableService } from './disposable';
+import { tMenu } from '@shared/ui-language';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -51,16 +52,23 @@ export class AppMenuService extends DisposableService {
 
     this.logger.debug('[AppMenuService] Teardown complete');
   }
+  /**
+   * 界面语言切换后重建原生应用菜单。
+   */
+  public refresh(): void {
+    this.updateApplicationMenu();
+  }
+
   private updateApplicationMenu() {
     app.applicationMenu = Menu.buildFromTemplate([
       {
         label: app.name,
         id: 'about_menu',
         submenu: [
-          { role: 'about' },
+          { role: 'about', label: tMenu('About stagewise', '关于 stagewise') },
           { type: 'separator' },
           {
-            label: 'Settings',
+            label: tMenu('Settings', '设置'),
             accelerator: 'CmdOrCtrl+,',
             click: () => {
               this.windowLayoutService.openSettings();
@@ -68,7 +76,10 @@ export class AppMenuService extends DisposableService {
           },
           { type: 'separator' },
           {
-            label: 'Open our GitHub repository',
+            label: tMenu(
+              'Open our GitHub repository',
+              '打开我们的 GitHub 仓库',
+            ),
             click: () => {
               void this.windowLayoutService.openUrl(
                 'https://github.com/stagewise-io/stagewise',
@@ -76,7 +87,10 @@ export class AppMenuService extends DisposableService {
             },
           },
           {
-            label: 'Open our Discord server',
+            label: tMenu(
+              'Open our Discord server',
+              '加入我们的 Discord 服务器',
+            ),
             click: () => {
               void this.windowLayoutService.openUrl(
                 'https://ade.stagewise.io/socials/discord',
@@ -84,14 +98,25 @@ export class AppMenuService extends DisposableService {
             },
           },
           { type: 'separator' },
-          { role: 'quit' },
+          { role: 'quit', label: tMenu('Quit stagewise', '退出 stagewise') },
         ],
       },
       {
-        role: 'editMenu',
+        label: tMenu('Edit', '编辑'),
+        submenu: [
+          { role: 'undo', label: tMenu('Undo', '撤销') },
+          { role: 'redo', label: tMenu('Redo', '重做') },
+          { type: 'separator' },
+          { role: 'cut', label: tMenu('Cut', '剪切') },
+          { role: 'copy', label: tMenu('Copy', '复制') },
+          { role: 'paste', label: tMenu('Paste', '粘贴') },
+          { role: 'delete', label: tMenu('Delete', '删除') },
+          { type: 'separator' },
+          { role: 'selectAll', label: tMenu('Select All', '全选') },
+        ],
       },
       {
-        label: 'User',
+        label: tMenu('User', '用户'),
         id: 'user_menu',
         submenu: (() => {
           switch (this.authService.authState.status) {
@@ -100,7 +125,7 @@ export class AppMenuService extends DisposableService {
               return [
                 {
                   id: 'user_menu_open_console',
-                  label: 'Open console',
+                  label: tMenu('Open console', '打开控制台'),
                   click: () => {
                     void this.windowLayoutService.openUrl(
                       'https://console.stagewise.io',
@@ -110,7 +135,7 @@ export class AppMenuService extends DisposableService {
                 { type: 'separator', id: 'user_menu_separator', visible: true },
                 {
                   id: 'user_menu_logout',
-                  label: 'Logout',
+                  label: tMenu('Logout', '退出登录'),
                   click: () => {
                     void this.authService.logout();
                   },
@@ -123,7 +148,7 @@ export class AppMenuService extends DisposableService {
               return [
                 {
                   id: 'user_menu_loading',
-                  label: 'Loading...',
+                  label: tMenu('Loading...', '加载中…'),
                   visible: true,
                 },
               ];
@@ -131,19 +156,19 @@ export class AppMenuService extends DisposableService {
         })(),
       },
       {
-        label: 'Help',
+        label: tMenu('Help', '帮助'),
         id: 'help_menu',
         submenu: [
           {
             id: 'help_menu_report_issue',
-            label: 'Report an issue',
+            label: tMenu('Report an issue', '报告问题'),
             click: () => {},
             visible: true,
           },
           { type: 'separator' },
           {
             id: 'help_menu_toggle_dev_tools',
-            label: 'Toggle developer tools',
+            label: tMenu('Toggle developer tools', '切换开发者工具'),
             click: () => {
               this.windowLayoutService.toggleUIDevTools();
             },

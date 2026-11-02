@@ -38,6 +38,18 @@
 
 - 与现有“界面缩放”（uiZoomPercentage）叠加生效。
 
+## 二点五、原生菜单本地化
+
+- 顶部应用菜单（stagewise / 编辑 / 用户 / 帮助）与网页右键菜单会跟随界面语言：
+  - 应用菜单：关于、设置、GitHub/Discord、退出、编辑菜单各项、用户菜单
+    （打开控制台/退出登录/加载中）、帮助菜单（报告问题/切换开发者工具）。
+  - 网页右键菜单：撤销/重做/粘贴/全选/剪切/复制、链接与图片/视频/音频操作、
+    复制链接地址、复制文本、搜索引擎搜索、打印/保存页面、检查元素、拼写建议。
+- 实现：`apps/browser/src/shared/ui-language.ts` 保存主进程当前语言，
+  `AppMenuService` 在偏好变化时重建菜单，`ContextMenuWebContent` 在每次弹出时读取；
+  切换语言后菜单立即更新，无需重启。
+- 渲染进程的界面文案仍由 `apps/browser/src/ui/i18n` 字典层负责。
+
 ## 三、默认工具审批模式（默认 Always allow）
 
 - 位置：设置 → 智能体 → 常规 → 默认工具审批。
@@ -113,8 +125,8 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装包：`stagewise-1.31.9-x64-setup.exe`（205,874,176 字节，
-  SHA256 `83C369A61BBA48C03784BE1D9CCCEF19958A3290B6BB2CAD145A4C74C010F9D3`，
+- 安装包：`stagewise-1.31.10-x64-setup.exe`（205,878,272 字节，
+  SHA256 `AC81891AC86FE4C2B8AE9EA8526301B3CCFAD1F07C57E97FCE5B48129E51C692`，
   release 渠道，覆盖安装保留用户数据）。
 - 验证方式：安装后启动应用，通过 Chrome DevTools Protocol 截图设置页，确认：
   - 设置页导航与内容为中文；
