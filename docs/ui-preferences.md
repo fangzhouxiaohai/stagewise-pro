@@ -71,6 +71,15 @@
   设置新旧快照层级并定义 `.theme-reveal-glow`。
 - 悬浮提示文案已加入中英词典（“Switch to dark mode”/“切换到暗黑模式”）。
 
+## 二点七、设置页返回按钮
+
+- 位置：设置侧栏顶部。
+- 样式：整行宽度、1px 边框、12px 圆角，与侧栏导航项对齐。
+- 鼠标移入：从指针进入位置向外扩散一层主色填充（600ms）。
+- 点击：在点击位置生成水波纹，延迟 260ms 关闭设置页，保证动画可见。
+- 实现：`settings/sidebar.tsx` 的 `SettingsBackButton` 与
+  `browser-base.css` 中的 `.settings-back-button` / `.settings-back-ripple`。
+
 ## 三、默认工具审批模式（默认 Always allow）
 
 - 位置：设置 → 智能体 → 常规 → 默认工具审批。
@@ -146,7 +155,7 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装程序：`stagewise-pro-1.31.22-x64-setup.exe`（Inno Setup，当前用户安装）。
+- 安装程序：`stagewise-pro-1.31.26-x64-setup.exe`（Inno Setup，当前用户安装）。
   - 默认安装到 `E:\softs\stagewise-pro`；
   - E 盘不存在时默认 `C:\softs\stagewise-pro`；
   - 两个盘都不可用时停留在目录选择页，由用户指定位置；

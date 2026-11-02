@@ -264,3 +264,61 @@
     contain: layout style;
   }
 }
+
+/* 设置页返回按钮：从鼠标移入位置扩散填充 + 点击水波 */
+.settings-back-button {
+  --back-hover-x: 50%;
+  --back-hover-y: 50%;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.settings-back-button::before {
+  content: '';
+  position: absolute;
+  left: var(--back-hover-x);
+  top: var(--back-hover-y);
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--color-primary-300) 26%, transparent);
+  opacity: 0;
+  transform: scale(0);
+  transition:
+    transform 560ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 180ms ease-out;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.settings-back-button.is-hovered::before {
+  opacity: 1;
+  transform: scale(18);
+}
+
+.settings-back-ripple {
+  position: absolute;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--color-primary-300) 20%, transparent);
+  border: 1.5px solid
+    color-mix(in oklab, var(--color-primary-300) 55%, transparent);
+  opacity: 0.5;
+  transform: translate(-50%, -50%) scale(0);
+  animation: settings-back-ripple 650ms ease-out forwards;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes settings-back-ripple {
+  0% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
