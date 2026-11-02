@@ -79,6 +79,7 @@ import type {
   AgentMessage,
   StoredAgentPreview,
 } from './agent';
+import type { HistoryCompactionResult } from '@stagewise/agent-core/agents';
 
 export type { WorkspaceGitSummary } from '@stagewise/agent-core/types/metadata';
 
@@ -1401,6 +1402,13 @@ export type KartonContract = {
         source?: 'panel-combobox' | 'inline-approval-button',
       ) => Promise<void>;
       stop: (agentId: string) => Promise<void>;
+      /**
+       * 手动压缩指定会话的上下文历史（输入框 `/compact` 斜杠命令）。
+       *
+       * 返回结构化结果，UI 依据 `status` 与 `reason` 展示对应提示，
+       * 不通过抛异常表达“无可压缩内容”等正常场景。
+       */
+      compactHistory: (agentId: string) => Promise<HistoryCompactionResult>;
       flushQueue: (agentId: string, messageId?: string) => Promise<void>;
       clearQueue: (agentId: string) => Promise<void>;
       deleteQueuedMessage: (

@@ -22,8 +22,17 @@ export {
   type AgentConfig,
   type MessageId,
   type SendUserMessageOptions,
+  type HistoryCompactionResult,
+  type HistoryCompactionStatus,
+  type HistoryCompactionSkipReason,
 } from './base-agent';
 export { ChatAgent } from './chat/chat';
+export {
+  DEFAULT_AUTO_COMPACTION_THRESHOLD,
+  resolveAutoCompactionTriggerTokens,
+  type AutoCompactionPolicy,
+  type ResolveAutoCompactionTriggerArgs,
+} from './shared/auto-compaction';
 
 // Shared helpers used across agent classes. Migrated from
 // `apps/browser/src/backend/agents/shared/base-agent/` in Phase 10 task 7.

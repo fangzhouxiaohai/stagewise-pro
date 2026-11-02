@@ -3,6 +3,7 @@ import type {
   BaseAgent,
   BaseAgentDependencies,
   BaseAgentToolboxView,
+  HistoryCompactionResult,
   SendUserMessageOptions,
 } from '../../agents/base-agent';
 import type { AgentTypeRegistry } from '../../agents/agents-registry';
@@ -612,6 +613,9 @@ export class AgentManager extends DisposableService {
     this.wrapAgentRpc('agents.stop', async (instanceId: string) => {
       await this.stopAgent(instanceId);
     });
+    this.wrapAgentRpc('agents.compactHistory', (instanceId: string) =>
+      this.compactAgentHistory(instanceId),
+    );
     this.wrapAgentRpc(
       'agents.flushQueue',
       async (instanceId: string, messageId?: string) => {
@@ -1800,6 +1804,24 @@ export class AgentManager extends DisposableService {
       ms_since_last_agent_message:
         lastAgentTs !== undefined ? now - lastAgentTs : undefined,
     });
+  }
+
+  /**
+   * 手动压缩指定会话的上下文历史（由 `/compact` 斜杠命令触发）。
+   *
+   * @note 会话未激活（例如仅存在于历史列表）时返回 `agent-not-active`，
+   *       由 UI 给出友好提示，避免抛出异常中断交互。
+   */
+  public async compactAgentHistory(
+    instanceId: string,
+  ): Promise<HistoryCompactionResult> {
+    const agent = this.activeAgents.get(instanceId);
+
+    if (!agent) {
+      return { status: 'skipped', reason: 'agent-not-active' };
+    }
+
+    return await agent.compactHistoryNow();
   }
 
   /**

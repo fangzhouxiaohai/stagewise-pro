@@ -46,6 +46,7 @@
 - **Reverse-engineer** any website's components, style systems, and color palettes
 - **IDE integration** to view and apply code changes in your favorite editor
 - **Bring your own API key** — fully supported for all AI providers
+- **Compact context on demand** — run `/compact` in the chat input, or let sessions auto-compact at 80% of the context window (Settings → Agent → General). See [docs/context-compaction.md](docs/context-compaction.md)
 
 ## Getting Started
 

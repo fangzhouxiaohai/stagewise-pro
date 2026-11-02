@@ -1,6 +1,7 @@
 import type { DomainId } from '../env/contract';
 import type { FileTransformer } from '../file-read-transformer/types';
 import type { AgentTypes } from '../types/agent';
+import type { AutoCompactionPolicy } from '../agents/shared/auto-compaction';
 import type { HostEnvironmentSources } from './environment-sources';
 import type { Logger } from './logger';
 import type { HostModels } from './models';
@@ -168,6 +169,13 @@ export interface AgentHostConfig {
    */
   environmentSources?: HostEnvironmentSources;
   externalAgentRuntimeFactory?: ExternalAgentRuntimeFactory;
+  /**
+   * 自动压缩上下文的策略提供者。宿主在运行时读取用户偏好后返回策略，
+   * 使设置开关对已存在的会话立即生效。
+   *
+   * @note 省略时智能体回退到自身配置的压缩阈值。
+   */
+  autoCompactionPolicyProvider?: () => AutoCompactionPolicy | undefined;
 }
 
 /**
@@ -203,6 +211,16 @@ export class AgentHost {
    */
   environmentSources: HostEnvironmentSources | undefined;
   externalAgentRuntimeFactory: ExternalAgentRuntimeFactory | undefined;
+  /**
+   * 自动压缩上下文的策略提供者（见
+   * {@link AgentHostConfig.autoCompactionPolicyProvider}）。
+   *
+   * 故意做成可变字段：宿主可能在 `AgentHost` 构造之后才拿到
+   * 偏好服务（例如浏览器端在启动后期绑定），读取方必须在调用前判空。
+   */
+  autoCompactionPolicyProvider:
+    | (() => AutoCompactionPolicy | undefined)
+    | undefined;
   private readonly fileReadTransformers: Record<string, FileTransformer> = {};
   private readonly toolPartSerializers: Record<string, ToolPartSerializer> = {};
   private readonly profiles = new Map<AgentTypes, AgentProfile>();
@@ -215,6 +233,7 @@ export class AgentHost {
     this.desktop = cfg.desktop;
     this.environmentSources = cfg.environmentSources;
     this.externalAgentRuntimeFactory = cfg.externalAgentRuntimeFactory;
+    this.autoCompactionPolicyProvider = cfg.autoCompactionPolicyProvider;
   }
 
   /**

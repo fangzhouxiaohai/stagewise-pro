@@ -81,6 +81,10 @@ import {
   generateSimpleCompressedHistory,
   estimateMessageTokens,
 } from './shared/history-compression';
+import {
+  resolveAutoCompactionTriggerTokens,
+  type AutoCompactionPolicy,
+} from './shared/auto-compaction';
 import { AgentMemoryWriter, type MemoryWriteReason } from './shared/memory';
 import type { AttachmentsService } from '../services/attachments';
 import { capToolOutput } from '../services/toolbox';
@@ -165,6 +169,42 @@ export interface BaseAgentCaches {
  * - `error` — the agent's step failed.
  */
 export type AgentNotificationEvent = 'done' | 'question' | 'error';
+
+/**
+ * 上下文压缩的结果状态。
+ *
+ * - `compressed`：本次调用完成了压缩并写入了摘要。
+ * - `skipped`：没有可压缩的内容，或已有压缩在进行中。
+ * - `unsupported`：当前运行模式不支持压缩（例如外部代理运行时）。
+ * - `failed`：压缩调用失败，智能体继续以未压缩的历史运行。
+ */
+export type HistoryCompactionStatus =
+  | 'compressed'
+  | 'skipped'
+  | 'unsupported'
+  | 'failed';
+
+/** `skipped` / `unsupported` 场景下的具体原因。 */
+export type HistoryCompactionSkipReason =
+  | 'busy'
+  | 'nothing-to-compact'
+  | 'agent-not-active'
+  | 'external-runtime';
+
+/**
+ * 一次上下文压缩调用的结果，用于向 UI 反馈手动压缩（`/compact`）的执行情况。
+ */
+export interface HistoryCompactionResult {
+  status: HistoryCompactionStatus;
+  /** 未能压缩时的具体原因。 */
+  reason?: HistoryCompactionSkipReason;
+  /** 被折叠进摘要的消息数量（仅 `compressed`）。 */
+  compressedMessageCount?: number;
+  /** 压缩后仍保留原文的消息数量（仅 `compressed`）。 */
+  keptMessageCount?: number;
+  /** 失败时的底层错误信息，仅用于日志与排查，不直接展示给用户。 */
+  errorMessage?: string;
+}
 
 /**
  * Constructor dependencies for {@link BaseAgent}.
@@ -2428,6 +2468,9 @@ export abstract class BaseAgent<
    * large-context models (e.g. 1M) compress at the same absolute token
    * count as the 200k-model sweet spot. Calibrated to `0.5 × 200_000`
    * matching the chat agent's `historyCompressionThreshold = 0.5`.
+   *
+   * @note 仅在宿主未注入自动压缩策略（用户偏好）时生效。用户显式打开
+   *       自动压缩后，触发点严格按设置的比例计算，不再被该上限截断。
    */
   private static readonly HISTORY_COMPRESSION_HARD_CAP_TOKENS = 100_000;
 
@@ -2439,7 +2482,44 @@ export abstract class BaseAgent<
    */
   private static readonly KEPT_BUDGET_HARD_CAP_TOKENS = 40_000;
 
-  private async compressHistoryInternal(): Promise<void> {
+  /**
+   * 读取宿主注入的自动压缩策略。
+   *
+   * 偏好服务可能尚未就绪或抛出异常（例如启动早期的宿主），此时记录
+   * 日志并回退到智能体自身配置，避免让压缩检查中断当前步骤。
+   */
+  private resolveAutoCompactionPolicy(): AutoCompactionPolicy | undefined {
+    try {
+      return this.host.autoCompactionPolicyProvider?.();
+    } catch (e) {
+      const error = e as Error;
+      this.host.logger.warn(
+        `[BaseAgent:${this.instanceId}] Failed to read auto-compaction policy: ${error.message}`,
+      );
+      return undefined;
+    }
+  }
+
+  /**
+   * 手动压缩当前会话上下文，供 `/compact` 斜杠命令调用。
+   *
+   * @note 与自动压缩共用同一套边界选择与摘要逻辑，并复用正在压缩的
+   *       互斥标记，避免并发写入互相覆盖。
+   */
+  public async compactHistoryNow(): Promise<HistoryCompactionResult> {
+    const state = this.state.get();
+    // 外部代理运行时自行维护上下文，stagewise 的摘要不会影响其真实上下文。
+    const externalSelection = {
+      modelId: state.activeModelId,
+      providerInstanceId: state.activeProviderInstanceId,
+    };
+    if (this.externalRuntime?.handles(externalSelection)) {
+      return { status: 'unsupported', reason: 'external-runtime' };
+    }
+    return await this.compressHistoryInternal();
+  }
+
+  private async compressHistoryInternal(): Promise<HistoryCompactionResult> {
     // Prevent concurrent compression runs — a second trigger while
     // compression is in-flight would see stale history and produce
     // a redundant (or conflicting) summary.
@@ -2447,7 +2527,7 @@ export abstract class BaseAgent<
       this.host.logger.debug(
         `[BaseAgent:${this.instanceId}] Skipping history compression — already in progress.`,
       );
-      return;
+      return { status: 'skipped', reason: 'busy' };
     }
     this._isCompressingHistory = true;
     try {
@@ -2500,7 +2580,9 @@ export abstract class BaseAgent<
         }
 
         // Scanned everything, it all fits — nothing to compress
-        if (i === 0) return;
+        if (i === 0) {
+          return { status: 'skipped', reason: 'nothing-to-compact' };
+        }
       }
 
       // Edge case: even the last message alone exceeds the budget
@@ -2511,7 +2593,9 @@ export abstract class BaseAgent<
         );
       }
 
-      if (boundaryIndex < 1) return; // nothing meaningful to compress
+      if (boundaryIndex < 1) {
+        return { status: 'skipped', reason: 'nothing-to-compact' };
+      }
 
       const actualKept = history.length - boundaryIndex;
       if (actualKept < preferredFloor) {
@@ -2521,7 +2605,9 @@ export abstract class BaseAgent<
       }
 
       const boundaryMessageId = history[boundaryIndex]?.id;
-      if (!boundaryMessageId) return;
+      if (!boundaryMessageId) {
+        return { status: 'skipped', reason: 'nothing-to-compact' };
+      }
 
       // If the boundary message already has compressed history, the
       // previous summary is included in messagesToCompact and will be
@@ -2544,17 +2630,34 @@ export abstract class BaseAgent<
         this.host.logger.warn(
           `[BaseAgent:${this.instanceId}] Boundary message not found in history after compression. The user may have undone or manipulated messages.`,
         );
-      } else {
-        this.host.logger.debug(
-          `[BaseAgent:${this.instanceId}] Stored compressed history in message ${boundaryMessageId}`,
-        );
+        return { status: 'skipped', reason: 'nothing-to-compact' };
+      }
+      this.host.logger.debug(
+        `[BaseAgent:${this.instanceId}] Stored compressed history in message ${boundaryMessageId}`,
+      );
+
+      const currentHistory = this.state.get().history;
+      const boundarySeq = currentHistory.findIndex(
+        (m) => m.id === boundaryMessageId,
+      );
+
+      // 压缩后剩余的历史才是真正占用的上下文，立刻回写用量，
+      // 让输入框的上下文占用指示器在压缩完成后立即回落。
+      if (boundarySeq >= 0) {
+        const keptTokens = currentHistory
+          .slice(boundarySeq)
+          .reduce((sum, message) => sum + estimateMessageTokens(message), 0);
+        this.state.commands.recordUsage({ totalTokens: keptTokens });
       }
 
-      const boundarySeq = this.state
-        .get()
-        .history.findIndex((m) => m.id === boundaryMessageId);
       await this.saveState(boundarySeq >= 0 ? [boundarySeq] : undefined);
+
       this.scheduleMemorySnapshotWrite('compression');
+      return {
+        status: 'compressed',
+        compressedMessageCount: messagesToCompact.length,
+        keptMessageCount: actualKept,
+      };
     } catch (e) {
       // Fail silently — compression is best-effort. The agent continues
       // without compression until the context window is exhausted, at which
@@ -2564,6 +2667,7 @@ export abstract class BaseAgent<
         `[BaseAgent:${this.instanceId}] History compression failed silently: ${error.message}`,
       );
       this.report(error, 'compressHistory');
+      return { status: 'failed', errorMessage: error.message };
     } finally {
       this._isCompressingHistory = false;
     }
@@ -2830,10 +2934,9 @@ export abstract class BaseAgent<
     this.emitToolCallEvents(result);
 
     // Check the current token usage. If necessary, summarize the chat history.
-    // Compress when used tokens exceed MIN(fraction * contextWindow, hardCap)
-    // — the hard cap prevents large-context models (1M+) from accumulating
-    // far more tokens than the fractional sweet-spot tuned for 200k models.
-    const compactionThreshold = this.config.historyCompressionThreshold ?? 0.65;
+    // 宿主注入的自动压缩策略优先（用户设置开关打开时按比例精确触发，
+    // 关闭时完全不做自动压缩）；未注入策略时沿用智能体配置阈值，
+    // 并由绝对上限约束，避免大上下文模型堆积过多 token。
     try {
       const postStepState = this.state.get();
       const contextWindowSize = (
@@ -2842,14 +2945,15 @@ export abstract class BaseAgent<
             postStepState.activeProviderInstanceId,
         })
       ).contextWindowSize;
-      const fractionalTriggerTokens = compactionThreshold * contextWindowSize;
-      const effectiveTriggerTokens = Math.min(
-        fractionalTriggerTokens,
-        BaseAgent.HISTORY_COMPRESSION_HARD_CAP_TOKENS,
-      );
+      const triggerTokens = resolveAutoCompactionTriggerTokens({
+        policy: this.resolveAutoCompactionPolicy(),
+        configThreshold: this.config.historyCompressionThreshold,
+        contextWindowSize,
+        hardCapTokens: BaseAgent.HISTORY_COMPRESSION_HARD_CAP_TOKENS,
+      });
       if (
-        compactionThreshold >= 0 &&
-        this.state.get().usedTokens > effectiveTriggerTokens
+        triggerTokens !== null &&
+        this.state.get().usedTokens > triggerTokens
       ) {
         void this.compressHistoryInternal();
       }

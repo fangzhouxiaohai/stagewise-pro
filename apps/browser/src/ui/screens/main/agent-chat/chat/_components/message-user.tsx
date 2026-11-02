@@ -775,6 +775,7 @@ export const MessageUser = memo(
                       mentionContext={mentionContext}
                       slashCommands={slashCommands}
                       allowSideChatCommand={false}
+                      allowCompactCommand={false}
                       className="w-full"
                     />
                     {/* Action buttons */}

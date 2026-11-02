@@ -8,6 +8,12 @@ const SIDE_CHAT_ITEM: SlashItem = {
   description: 'Fork this chat into an independent side chat',
   group: 'builtin',
 };
+const COMPACT_CONTEXT_ITEM: SlashItem = {
+  id: 'command:compact',
+  label: 'Compact',
+  description: 'Compress the conversation context now',
+  group: 'builtin',
+};
 
 /**
  * Module-level ref holding the current list of available skills.
@@ -19,6 +25,14 @@ export const slashSkillsRef: { current: SkillDefinitionUI[] } = {
 };
 export const slashSideChatEnabledRef = { current: true };
 export const slashOpenSideChatRef: { current: (() => void) | null } = {
+  current: null,
+};
+/** 是否允许在当前输入框里触发“压缩上下文”命令。 */
+export const slashCompactEnabledRef = { current: true };
+/** 由聊天输入框注入的压缩上下文回调，在选中命令时执行。 */
+export const slashCompactContextRef: {
+  current: (() => void) | null;
+} = {
   current: null,
 };
 
@@ -48,6 +62,7 @@ export function querySlashItems(query: string): SlashItem[] {
   const q = query.toLowerCase();
   const all = [
     ...(slashSideChatEnabledRef.current ? [SIDE_CHAT_ITEM] : []),
+    ...(slashCompactEnabledRef.current ? [COMPACT_CONTEXT_ITEM] : []),
     ...slashSkillsRef.current.map(
       (cmd): SlashItem => ({
         id: cmd.id,

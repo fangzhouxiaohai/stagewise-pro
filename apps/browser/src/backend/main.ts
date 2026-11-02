@@ -31,6 +31,7 @@ import { WebDataService } from './services/webdata';
 import { AttachmentsService } from '@stagewise/agent-core/attachments';
 import { AgentCorePersistence } from '@stagewise/agent-core/persistence';
 import type { AgentManagerStartupPolicy } from '@stagewise/agent-core';
+import { DEFAULT_AUTO_COMPACTION_THRESHOLD } from '@stagewise/agent-core/agents';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import { AutoUpdateService } from './services/auto-update';
 import { LocalPortsScannerService } from './services/local-ports-scanner';
@@ -293,6 +294,15 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
     telemetryService,
     paths: hostPaths,
     models: lazyHostModels.hostModels,
+    // 自动压缩上下文：策略在每次步骤结束后实时读取偏好，
+    // 因此设置开关对已经存在的会话立即生效。
+    autoCompactionPolicyProvider: () => {
+      const agentPreferences = preferencesService.get().agent;
+      return {
+        enabled: agentPreferences.autoCompactContext !== false,
+        threshold: DEFAULT_AUTO_COMPACTION_THRESHOLD,
+      };
+    },
   });
 
   // Push bundled plugin definitions to UI karton state

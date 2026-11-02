@@ -9,7 +9,11 @@ import {
 } from 'react';
 import type { ComponentType } from 'react';
 import { cn } from '@ui/utils';
-import { MessageSquarePlusIcon, TerminalSquareIcon } from 'lucide-react';
+import {
+  MessageSquarePlusIcon,
+  Minimize2Icon,
+  TerminalSquareIcon,
+} from 'lucide-react';
 import {
   IconBugOutline18,
   IconClipboardOutline18,
@@ -22,6 +26,7 @@ import type { SlashItem } from './types';
 /** Map of builtin command IDs to their icon components. */
 const COMMAND_ICONS: Record<string, ComponentType<{ className?: string }>> = {
   'command:side': MessageSquarePlusIcon,
+  'command:compact': Minimize2Icon,
   'command:plan': IconClipboardOutline18,
   'command:preview': IconImageSparkle3Outline18,
   'command:learn': IconSideProfileSparkleOutline18,

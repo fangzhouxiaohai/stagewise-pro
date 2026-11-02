@@ -2,7 +2,11 @@ import Mention from '@tiptap/extension-mention';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { SlashNodeView } from './slash-node-view';
 import { createSlashSuggestionRenderer } from './suggestion-renderer';
-import { querySlashItems, slashOpenSideChatRef } from './provider';
+import {
+  querySlashItems,
+  slashCompactContextRef,
+  slashOpenSideChatRef,
+} from './provider';
 import type { SlashItem } from './types';
 
 const SLASH_PROTOCOL = 'slash';
@@ -95,6 +99,12 @@ export const SlashExtension = Mention.extend({
       if (item.id === 'command:side') {
         editor.chain().deleteRange(range).run();
         slashOpenSideChatRef.current?.();
+        return;
+      }
+      if (item.id === 'command:compact') {
+        // 压缩上下文是即时动作，不插入节点也不发送消息。
+        editor.chain().deleteRange(range).run();
+        slashCompactContextRef.current?.();
         return;
       }
       editor

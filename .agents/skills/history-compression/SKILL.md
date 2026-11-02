@@ -11,22 +11,26 @@ Stagewise summarizes long agent histories into a single briefing stored on a "bo
 
 All paths are repo-root-relative.
 
-- `apps/browser/src/backend/agents/shared/base-agent/base-agent.ts` — trigger + boundary logic (`compressHistoryInternal`, ~L1898; trigger check in `handlePostStep` ~L2208).
-- `apps/browser/src/backend/agents/shared/base-agent/history-compression/index.ts` — model cascade + `generateSimpleCompressedHistory`.
-- `apps/browser/src/backend/agents/shared/base-agent/history-compression/prompt.ts` — `COMPRESSION_SYSTEM_PROMPT`, `COMPRESSION_TARGET_CHARS = 30_000`, `buildCompressionUserMessage` (dynamic budget hint).
-- `apps/browser/src/backend/agents/shared/base-agent/history-compression/serialization.ts` — `convertAgentMessagesToCompactMessageHistoryString`, `estimateMessageTokens`.
+- `packages/agent-core/src/agents/base-agent.ts` — trigger + boundary logic (`compressHistoryInternal`, `compactHistoryNow`, `handlePostStep`).
+- `packages/agent-core/src/agents/shared/auto-compaction.ts` — `resolveAutoCompactionTriggerTokens`（80% 策略与历史兼容路径）。
+- `packages/agent-core/src/agents/shared/history-compression/index.ts` — model cascade + `generateSimpleCompressedHistory`.
+- `packages/agent-core/src/agents/shared/history-compression/prompt.ts` — `COMPRESSION_SYSTEM_PROMPT`, `COMPRESSION_TARGET_CHARS = 30_000`, `buildCompressionUserMessage` (dynamic budget hint).
+- `packages/agent-core/src/agents/shared/history-compression/serialization.ts` — `convertAgentMessagesToCompactMessageHistoryString`, `estimateMessageTokens`.
 - `scripts/experiments/extract-compression-test-data.ts` — SQLite → playground-ready per-compression bundles.
 
 ## Trigger
 
 After every step → `handlePostStep` checks:
 
-`usedTokens > min(compactionThreshold × contextWindow, 200k)`
-
-- `compactionThreshold` default **0.65**; chat agent overrides to **0.5**.
-- `200k` hard cap (`HISTORY_COMPRESSION_HARD_CAP_TOKENS`) = 1M-ctx models trigger at the same absolute count as a 200k-context model running near its full window.
+- 宿主注入策略（浏览器端读取偏好 `agent.autoCompactContext`）：
+  - 开关打开 → `usedTokens > 0.8 × contextWindow`（`DEFAULT_AUTO_COMPACTION_THRESHOLD`，不受绝对上限约束）。
+  - 开关关闭 → 不自动压缩，只能通过输入框 `/compact` 手动触发。
+- 未注入策略（CLI、测试）→ `usedTokens > min(compactionThreshold × contextWindow, 100k)`：
+  - `compactionThreshold` default **0.65**; chat agent overrides to **0.5**.
+  - `100k` hard cap (`HISTORY_COMPRESSION_HARD_CAP_TOKENS`) = 1M-ctx models trigger at the same absolute count as a 200k-context model running near its full window.
 - Runs via `void` (async, non-blocking). Guarded by `_isCompressingHistory` flag → no concurrent runs.
 - Silent failure — agent keeps going, context overflow later surfaces normal model error.
+- 手动压缩 `agents.compactHistory` RPC → `BaseAgent.compactHistoryNow()` → 复用同一套边界逻辑，返回结构化状态（`compressed` / `skipped` / `unsupported` / `failed`）。
 
 ## Boundary selection (`compressHistoryInternal`)
 

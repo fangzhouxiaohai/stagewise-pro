@@ -1158,6 +1158,14 @@ export const userPreferencesSchema = z.object({
        */
       disabledGlobalSkills: z.array(z.string()).default([]),
       /**
+       * 是否在所有会话中自动压缩上下文。
+       *
+       * 打开后，会话的已用 token 超过当前模型上下文窗口的 80% 时
+       * 自动生成历史摘要；关闭后只能通过输入框的 `/compact`
+       * 斜杠命令手动压缩。
+       */
+      autoCompactContext: z.boolean().default(true),
+      /**
        * User-configured fallback chains for background utility tasks.
        * Each array is an ordered list of model entries; the agent tries
        * each in order until one succeeds. An empty array falls back
@@ -1266,6 +1274,7 @@ export const userPreferencesSchema = z.object({
       modelThinkingOverrides: {},
       enabledGlobalSkillDirs: [],
       disabledGlobalSkills: [],
+      autoCompactContext: true,
       utilityModels: {
         titleGeneration: DEFAULT_TITLE_GENERATION_ENTRIES,
         contextCompression: DEFAULT_HISTORY_COMPRESSION_ENTRIES,
@@ -1384,6 +1393,7 @@ export const defaultUserPreferences: UserPreferences = {
     modelThinkingOverrides: {},
     enabledGlobalSkillDirs: [],
     disabledGlobalSkills: [],
+    autoCompactContext: true,
     utilityModels: {
       titleGeneration: DEFAULT_TITLE_GENERATION_ENTRIES,
       contextCompression: DEFAULT_HISTORY_COMPRESSION_ENTRIES,

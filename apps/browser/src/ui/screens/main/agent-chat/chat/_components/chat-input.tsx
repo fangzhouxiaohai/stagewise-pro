@@ -44,6 +44,8 @@ import {
 } from './rich-text/mentions';
 import {
   SlashExtension,
+  slashCompactContextRef,
+  slashCompactEnabledRef,
   slashOpenSideChatRef,
   slashSideChatEnabledRef,
   slashSkillsRef,
@@ -274,6 +276,10 @@ export interface ChatInputProps {
   slashCommands?: SkillDefinitionUI[];
   allowSideChatCommand?: boolean;
   onOpenSideChat?: () => void;
+  /** 是否允许 `/compact` 命令（编辑历史消息时不提供）。 */
+  allowCompactCommand?: boolean;
+  /** `/compact` 命令的回调，由聊天面板注入。 */
+  onCompactContext?: () => void;
 
   // Styling
   className?: string;
@@ -338,6 +344,8 @@ export const ChatInput = memo(function ChatInput({
   slashCommands,
   allowSideChatCommand = true,
   onOpenSideChat,
+  allowCompactCommand = true,
+  onCompactContext,
 
   className,
   ref,
@@ -573,6 +581,8 @@ export const ChatInput = memo(function ChatInput({
       if (slashCommands) slashSkillsRef.current = slashCommands;
       slashSideChatEnabledRef.current = allowSideChatCommand;
       slashOpenSideChatRef.current = onOpenSideChat ?? null;
+      slashCompactEnabledRef.current = allowCompactCommand;
+      slashCompactContextRef.current = onCompactContext ?? null;
       onFocus?.();
     },
     onBlur: ({ event }) => {

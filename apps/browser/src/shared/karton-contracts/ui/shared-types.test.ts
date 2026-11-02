@@ -600,3 +600,19 @@ describe('userPreferencesSchema providerInstances', () => {
     expect(parsed.providerInstances[1]?.typeId).toBe('anthropic-api');
   });
 });
+
+describe('userPreferencesSchema 自动压缩上下文默认值', () => {
+  it('未显式配置时默认开启自动压缩', () => {
+    const parsed = userPreferencesSchema.parse({});
+
+    expect(parsed.agent.autoCompactContext).toBe(true);
+  });
+
+  it('保留用户关闭自动压缩的选择', () => {
+    const parsed = userPreferencesSchema.parse({
+      agent: { autoCompactContext: false },
+    });
+
+    expect(parsed.agent.autoCompactContext).toBe(false);
+  });
+});

@@ -42,6 +42,7 @@ const AGENT_RPC_COMMANDS = [
   'agents.sendToolApprovalResponse',
   'agents.setToolApprovalMode',
   'agents.stop',
+  'agents.compactHistory',
   'agents.flushQueue',
   'agents.clearQueue',
   'agents.deleteQueuedMessage',

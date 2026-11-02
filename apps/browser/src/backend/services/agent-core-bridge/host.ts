@@ -1,6 +1,7 @@
 import {
   AgentHost,
   AgentTypes,
+  type AutoCompactionPolicy,
   type DomainId,
   type HostEnvironmentSources,
   type HostModels,
@@ -72,6 +73,13 @@ export interface BrowserAgentHostDeps {
    * run without the env-state pipeline.
    */
   environmentSources?: HostEnvironmentSources;
+  /**
+   * 自动压缩上下文的策略提供者。浏览器端在启动时注入，闭包内读取
+   * 用户偏好，因此设置开关关闭后所有会话立即停止自动压缩。
+   *
+   * @note 省略时沿用智能体自身配置的压缩阈值。
+   */
+  autoCompactionPolicyProvider?: () => AutoCompactionPolicy | undefined;
 }
 
 /**
@@ -103,6 +111,7 @@ export function createBrowserAgentHost(deps: BrowserAgentHostDeps): AgentHost {
       logger: deps.logger,
     }),
     environmentSources: deps.environmentSources,
+    autoCompactionPolicyProvider: deps.autoCompactionPolicyProvider,
     desktop: {
       async revealPathInFileManager(absolutePath: string) {
         if (!existsSync(absolutePath)) {

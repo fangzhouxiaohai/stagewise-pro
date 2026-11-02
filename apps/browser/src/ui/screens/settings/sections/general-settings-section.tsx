@@ -9,6 +9,7 @@ import {
   useSoundSettings,
   NOTIFICATION_LOUDNESS_OPTIONS,
 } from '@ui/hooks/use-sound-settings';
+import type { Patch } from '@shared/karton-contracts/ui/shared-types';
 import { PlayIcon, TriangleAlertIcon, UploadIcon } from 'lucide-react';
 
 // =============================================================================
@@ -56,6 +57,57 @@ function PowerSaveBlockerSetting() {
       <Switch
         id="agent-power-save-blocker"
         checked={isEnabled}
+        onCheckedChange={handleChange}
+        size="xs"
+        className="mt-1 shrink-0"
+      />
+    </div>
+  );
+}
+
+// =============================================================================
+// Auto Compact Context Setting Component
+// =============================================================================
+
+/**
+ * 自动压缩上下文开关。
+ *
+ * 打开后所有会话在已用 token 超过模型上下文窗口的 80% 时自动生成摘要；
+ * 关闭后仍可在聊天输入框用 `/compact` 手动压缩。
+ */
+function AutoCompactContextSetting() {
+  const autoCompactContext = useKartonState(
+    (s) => s.preferences.agent.autoCompactContext,
+  );
+  const updatePreferences = useKartonProcedure((p) => p.preferences.update);
+
+  const handleChange = async (checked: boolean) => {
+    const patch: Patch = {
+      op: 'replace',
+      path: ['agent', 'autoCompactContext'],
+      value: checked,
+    };
+    await updatePreferences([patch]);
+  };
+
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <label htmlFor="agent-auto-compact-context">
+          <h3 className="font-medium text-base text-foreground">
+            Auto-compact context
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            Summarize the conversation automatically once a session reaches 80%
+            of the model's context window. When disabled, compress manually from
+            the chat input with <code className="text-xs">/compact</code>.
+          </p>
+        </label>
+      </div>
+
+      <Switch
+        id="agent-auto-compact-context"
+        checked={autoCompactContext}
         onCheckedChange={handleChange}
         size="xs"
         className="mt-1 shrink-0"
@@ -248,6 +300,7 @@ export function GeneralSettingsSection() {
           </div>
           <section className="space-y-6">
             <PowerSaveBlockerSetting />
+            <AutoCompactContextSetting />
           </section>
         </div>
       </OverlayScrollbar>

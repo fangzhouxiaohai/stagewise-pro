@@ -102,6 +102,7 @@ import {
   IconArrowUpRightOutline18,
 } from '@stagewise/icons';
 import { useOpenSideChat } from '@ui/hooks/use-open-side-chat';
+import { useCompactContext } from '@ui/hooks/use-compact-context';
 
 // Stable empty arrays to avoid new-reference re-renders
 const EMPTY_HISTORY: AgentMessage[] = [];
@@ -452,6 +453,7 @@ export const ChatPanelFooter = memo(function ChatPanelFooter({
   // Karton procedures
   const sendUserMessage = useKartonProcedure((p) => p.agents.sendUserMessage);
   const openSideChat = useOpenSideChat();
+  const compactContext = useCompactContext();
   const stopAgent = useKartonProcedure((p) => p.agents.stop);
   const createWorkspaceGitWorktree = useKartonProcedure(
     (p) => p.toolbox.createWorkspaceGitWorktree,
@@ -1983,6 +1985,8 @@ export const ChatPanelFooter = memo(function ChatPanelFooter({
             slashCommands={slashCommands}
             allowSideChatCommand={!sideChatParentId}
             onOpenSideChat={openSideChat}
+            allowCompactCommand={!isExternalAgentRuntime}
+            onCompactContext={compactContext}
           />
           <ChatInputActions
             showElementSelectorButton={hasVisibleBrowsingTab}
