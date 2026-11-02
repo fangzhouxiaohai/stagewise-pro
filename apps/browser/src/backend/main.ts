@@ -303,6 +303,12 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
         threshold: DEFAULT_AUTO_COMPACTION_THRESHOLD,
       };
     },
+    // 新建会话的默认审批模式：读取用户偏好（首次安装默认 Always allow）。
+    defaultToolApprovalModeProvider: () =>
+      preferencesService.get().agent.defaultToolApprovalMode,
+    // 全局提示词：追加到所有原生智能体的系统提示词末尾。
+    globalSystemPromptProvider: () =>
+      preferencesService.get().agent.globalSystemPrompt,
   });
 
   // Push bundled plugin definitions to UI karton state

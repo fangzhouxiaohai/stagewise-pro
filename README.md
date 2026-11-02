@@ -47,6 +47,7 @@
 - **IDE integration** to view and apply code changes in your favorite editor
 - **Bring your own API key** — fully supported for all AI providers
 - **Compact context on demand** — run `/compact` in the chat input, or let sessions auto-compact at 80% of the context window (Settings → Agent → General). See [docs/context-compaction.md](docs/context-compaction.md)
+- **Chinese-first interface** — switch between Simplified Chinese and English, pick one of five text sizes, set a default tool-approval mode, and add global instructions for every chat (Settings → Agent → General). See [docs/ui-preferences.md](docs/ui-preferences.md)
 
 ## Getting Started
 

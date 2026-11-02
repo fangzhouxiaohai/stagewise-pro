@@ -48,11 +48,6 @@ export function AgentChat({
       ? (s.agents.instances[openAgent]?.state.activeProviderInstanceId ?? null)
       : null,
   );
-  const openAgentToolApprovalMode = useKartonState((s) =>
-    openAgent
-      ? (s.agents.instances[openAgent]?.state.toolApprovalMode ?? null)
-      : null,
-  );
   const currentMounts = useKartonState((s) =>
     openAgent
       ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
@@ -64,8 +59,6 @@ export function AgentChat({
   openAgentModelIdRef.current = openAgentModelId;
   const openAgentProviderInstanceIdRef = useRef(openAgentProviderInstanceId);
   openAgentProviderInstanceIdRef.current = openAgentProviderInstanceId;
-  const openAgentToolApprovalModeRef = useRef(openAgentToolApprovalMode);
-  openAgentToolApprovalModeRef.current = openAgentToolApprovalMode;
   const currentMountPathsRef = useRef(currentMounts.map((m) => m.path));
   currentMountPathsRef.current = currentMounts.map((m) => m.path);
 
@@ -96,14 +89,14 @@ export function AgentChat({
     const currentModelId = openAgentModelIdRef.current ?? undefined;
     const currentProviderInstanceId =
       openAgentProviderInstanceIdRef.current ?? undefined;
-    const currentToolApprovalMode =
-      openAgentToolApprovalModeRef.current ?? undefined;
     const paths = currentMountPathsRef.current;
     void createAgent(
       undefined,
       currentModelId,
       currentProviderInstanceId,
-      currentToolApprovalMode,
+      // 默认审批模式由设置里的 `defaultToolApprovalMode` 决定，
+      // 不再继承上一个会话的临时选择。
+      undefined,
       paths.length > 0 ? paths : undefined,
     )
       .then((id) => {

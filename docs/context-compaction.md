@@ -36,12 +36,58 @@
 ### 2.2 自动压缩开关
 
 - 位置：设置 → Agent → General → `Auto-compact context`（默认开启）。
-- 打开：每次步骤结束后读取实时偏好，`usedTokens > 0.8 × contextWindow` 时自动压缩，
-  不受历史 100k 绝对上限约束（该上限仅用于未接入用户偏好的宿主）。
-- 关闭：`handlePostStep` 不再触发自动压缩；手动 `/compact` 不受影响。
+- 打开：每个步骤结束以及每次发起新请求之前都会读取实时偏好，
+  `usedTokens > 0.8 × contextWindow` 时自动压缩，不受历史 100k 绝对上限约束
+  （该上限仅用于未接入用户偏好的宿主）。
+- 窗口口径统一：步骤结束时会同时把当前模型真实的 `contextWindowSize` 写回
+  agent 状态，输入框指示器与后端触发阈值使用同一个窗口值，避免“界面显示 80%
+  但后端认为没到”的口径偏差。
+- 关闭：不再触发自动压缩；手动 `/compact` 不受影响。
 - 策略通过宿主注入的读取函数实时获取，因此修改开关后已存在的会话立即生效，无需重启。
 
-### 2.3 压缩算法（沿用既有实现）
+### 2.3 压缩过程可见与任务连续性
+
+- 对话内提示：压缩开始时在聊天区底部显示带旋转图标的 `Compressing context...`
+  动画；完成后显示 `Context compressed - N earlier messages summarized`，
+  8 秒后自动收起；失败则显示 `Context compression failed`（智能体继续使用未压缩历史）。
+- 状态由 agent 状态的瞬态字段 `compaction` 驱动（running / completed / failed，
+  含触发来源 auto/manual、开始/结束时间、折叠与保留消息数），不写数据库。
+- 自动压缩从“后台 fire-and-forget”改为 **await 后再继续步骤循环**：压缩成功后
+  下一次模型请求直接使用压缩后的历史，任务不会中断，也不会因上下文溢出报错。
+- 额外增加请求前检查：恢复会话或上一轮刚越过 80% 时，先压缩再发请求。
+
+### 2.4 上下文与生成速度显示
+
+- 位置：设置 → Agent → General → `Show context usage and speed`（默认开启）。
+- 打开后，输入框模型选择器旁并排显示上下文占用百分比与最近一步的生成速度，
+  例如 `42% · 18 tok/s`；圆环颜色随占用变化（≥70% 警告色，≥90% 错误色），
+  悬浮提示同时给出 `x% - 12k / 64k used` 与速度。
+- 关闭后恢复旧行为：仅在占用超过 80%（或 dev 构建）时显示圆环，不显示速度。
+- 生成速度只统计模型真正输出内容的窗口（首次出现文本/推理增量到最后一次增量），
+  不包含工具执行与审批等待时间，避免工具密集步骤被严重低估。
+
+### 2.6 关于“超过 80% 却看不到压缩”的排查结论
+
+本机核查了 `%APPDATA%\stagewise\stagewise\preferences.json` 与
+`agents/instances.sqlite`：
+
+- `autoCompactContext` 未写入 preferences.json，但 schema 默认值为 `true`，
+  运行时实际生效；
+- Qwen 本地会话最近一步 `used_tokens = 49,353`，模型窗口 `65,536`（75.3%），
+  严格来说尚未达到 80%；DeepSeek 会话 `177,685 / 1,048,576`（17%）。
+
+虽然没有复现出“越过 80% 仍不触发”的确定性逻辑错误，但确认了三个会造成
+“看起来没有压缩”的真实问题，并已修复：
+
+1. **压缩完全不可见**：旧实现用 `void` 后台触发，压缩期间界面没有任何提示，
+   用户看到占用停在 80% 以上会以为没压缩；压缩与下一步并发时还可能因上下文
+   溢出导致任务中断。现在改为等待压缩完成再继续，并在对话内显示动画与结果。
+2. **窗口口径可能不一致**：旧实现不把后端解析到的 `contextWindowSize` 写回状态，
+   输入框会走选择器/200k 兜底值；现在每个步骤结束都会回写真实窗口。
+3. **只在步骤结束后检查**：恢复会话或跨轮时不会在发请求前检查；现在请求前
+   也会检查一次。
+
+### 2.7 压缩算法（沿用既有实现）
 
 - 保留预算：`min(0.2 × contextWindow, 40k tokens)`；
 - 保留条数下限：`max(5, minUncompressedMessages ?? 10)`；
@@ -54,16 +100,20 @@
 | 文件 | 说明 |
 | --- | --- |
 | `packages/agent-core/src/agents/shared/auto-compaction.ts` | 触发阈值解析（宿主策略优先，历史配置兜底） |
-| `packages/agent-core/src/agents/base-agent.ts` | 自动压缩触发、手动压缩入口 `compactHistoryNow`、压缩结果类型、压缩后回写用量 |
+| `packages/agent-core/src/agents/shared/step-metrics.ts` | 流式内容窗口与生成速度（tok/s）计算 |
+| `packages/agent-core/src/agents/base-agent.ts` | 请求前/步骤后压缩检查、`compactHistoryNow`、压缩状态机、上下文窗口回写、速度统计 |
+| `packages/agent-core/src/types/agent.ts` | 瞬态字段 `compaction` 与 `lastStepTokensPerSecond` |
 | `packages/agent-core/src/host/host.ts` | 新增 `autoCompactionPolicyProvider` 宿主能力位 |
 | `packages/agent-core/src/services/agent-manager/agent-manager.ts` | `agents.compactHistory` 命令注册与 `compactAgentHistory` |
 | `apps/browser/src/backend/main.ts` | 注入读取偏好 `agent.autoCompactContext` 的策略提供者 |
-| `apps/browser/src/shared/karton-contracts/ui/shared-types.ts` | 偏好字段 `agent.autoCompactContext`（默认 `true`）与 schema 默认值 |
+| `apps/browser/src/shared/karton-contracts/ui/shared-types.ts` | 偏好字段 `autoCompactContext` / `showContextStats`（默认均 `true`） |
 | `apps/browser/src/shared/karton-contracts/ui/index.ts` | Karton 契约 `agents.compactHistory` |
 | `apps/browser/src/backend/services/agent-manager/agent-manager.ts` | 转发 `agents.compactHistory` RPC |
 | `apps/browser/src/ui/hooks/use-compact-context.ts` | 手动压缩的 UI 逻辑与 Toast 状态 |
+| `apps/browser/src/ui/screens/main/agent-chat/chat/_components/message-compaction.tsx` | 对话内压缩进行中/结果提示 |
+| `apps/browser/src/ui/screens/main/agent-chat/chat/_components/context-usage-ring.tsx` | 上下文百分比 + 生成速度并排显示 |
 | `apps/browser/src/ui/screens/main/agent-chat/chat/_components/rich-text/slash/provider.ts` 等 | `/compact` 内置命令条目、图标、选择后的即时执行 |
-| `apps/browser/src/ui/screens/settings/sections/general-settings-section.tsx` | 自动压缩开关 |
+| `apps/browser/src/ui/screens/settings/sections/general-settings-section.tsx` | 自动压缩与上下文/速度显示开关 |
 | `.agents/skills/history-compression/SKILL.md` | 同步更新压缩触发说明 |
 
 ## 四、验证记录

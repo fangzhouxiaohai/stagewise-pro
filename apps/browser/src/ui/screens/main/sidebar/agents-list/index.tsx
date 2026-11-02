@@ -73,10 +73,7 @@ import {
   type WorkspaceGitWorktreeDeletionInfo,
   type WorkspaceGitWorktreesResult,
 } from '@shared/karton-contracts/ui';
-import type {
-  AgentListGroupingMode,
-  ToolApprovalMode,
-} from '@shared/karton-contracts/ui/shared-types';
+import type { AgentListGroupingMode } from '@shared/karton-contracts/ui/shared-types';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { toast } from '@stagewise/stage-ui/components/toaster';
 import { Checkbox } from '@stagewise/stage-ui/components/checkbox';
@@ -762,11 +759,6 @@ export function AgentsList() {
       ? (s.agents.instances[openAgent]?.state.activeProviderInstanceId ?? null)
       : null,
   );
-  const openAgentToolApprovalMode = useKartonState((s) =>
-    openAgent
-      ? (s.agents.instances[openAgent]?.state.toolApprovalMode ?? null)
-      : null,
-  );
   const currentMounts = useKartonState((s) =>
     openAgent
       ? (s.toolbox[openAgent]?.workspace?.mounts ?? EMPTY_MOUNTS)
@@ -776,10 +768,6 @@ export function AgentsList() {
   openAgentModelIdRef.current = openAgentModelId;
   const openAgentProviderInstanceIdRef = useRef(openAgentProviderInstanceId);
   openAgentProviderInstanceIdRef.current = openAgentProviderInstanceId;
-  const openAgentToolApprovalModeRef = useRef<ToolApprovalMode | null>(
-    openAgentToolApprovalMode,
-  );
-  openAgentToolApprovalModeRef.current = openAgentToolApprovalMode;
   const currentMountPathsRef = useRef(currentMounts.map((m) => m.path));
   currentMountPathsRef.current = currentMounts.map((m) => m.path);
 
@@ -880,14 +868,13 @@ export function AgentsList() {
     const currentModelId = openAgentModelIdRef.current ?? undefined;
     const currentProviderInstanceId =
       openAgentProviderInstanceIdRef.current ?? undefined;
-    const currentToolApprovalMode =
-      openAgentToolApprovalModeRef.current ?? undefined;
     const paths = currentMountPathsRef.current;
     void createAgent(
       undefined,
       currentModelId,
       currentProviderInstanceId,
-      currentToolApprovalMode,
+      // 默认审批模式由设置里的 `defaultToolApprovalMode` 决定。
+      undefined,
       paths.length > 0 ? paths : undefined,
     ).then((id) => {
       setOpenAgent(id);
@@ -1060,13 +1047,12 @@ export function AgentsList() {
       const currentModelId = openAgentModelIdRef.current ?? undefined;
       const currentProviderInstanceId =
         openAgentProviderInstanceIdRef.current ?? undefined;
-      const currentToolApprovalMode =
-        openAgentToolApprovalModeRef.current ?? undefined;
       void createAgent(
         undefined,
         currentModelId,
         currentProviderInstanceId,
-        currentToolApprovalMode,
+        // 默认审批模式由设置里的 `defaultToolApprovalMode` 决定。
+        undefined,
         [workspacePath],
         true,
       ).then((id) => {

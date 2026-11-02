@@ -6,6 +6,7 @@ import { TabStateUIProvider } from '../hooks/use-tab-ui-state';
 import { ErrorBoundary } from './error-boundary';
 import { TutorialProvider } from '@ui/contexts/tutorial';
 import { PersonalizationThemeSyncer } from './personalization-theme-syncer';
+import { UiPreferenceSyncer } from './ui-preference-syncer';
 import { useAnimationIdleGate } from '@ui/hooks/use-animation-idle-gate';
 
 export function ContextProviders({ children }: { children?: ReactNode }) {
@@ -18,6 +19,7 @@ export function ContextProviders({ children }: { children?: ReactNode }) {
             <TutorialProvider>
               <TabStateUIProvider>
                 <PersonalizationThemeSyncer />
+                <UiPreferenceSyncer />
                 {children}
               </TabStateUIProvider>
             </TutorialProvider>

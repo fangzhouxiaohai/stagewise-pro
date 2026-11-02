@@ -1,6 +1,7 @@
 import type { DomainId } from '../env/contract';
 import type { FileTransformer } from '../file-read-transformer/types';
 import type { AgentTypes } from '../types/agent';
+import type { ToolApprovalMode } from '../types/tool-approval';
 import type { AutoCompactionPolicy } from '../agents/shared/auto-compaction';
 import type { HostEnvironmentSources } from './environment-sources';
 import type { Logger } from './logger';
@@ -176,6 +177,20 @@ export interface AgentHostConfig {
    * @note 省略时智能体回退到自身配置的压缩阈值。
    */
   autoCompactionPolicyProvider?: () => AutoCompactionPolicy | undefined;
+  /**
+   * 新建会话的默认工具审批模式提供者。宿主读取用户偏好后返回，
+   * 未提供时回退到 agent-core 的 `DEFAULT_TOOL_APPROVAL_MODE`。
+   *
+   * @note 仅作用于新建会话；单个会话在输入框里切换的模式优先。
+   */
+  defaultToolApprovalModeProvider?: () => ToolApprovalMode | undefined;
+  /**
+   * 全局提示词提供者：返回追加到每个智能体系统提示词末尾的额外指令。
+   * 宿主在运行时读取用户偏好，修改后对下一个步骤立即生效。
+   *
+   * @note 仅作用于 stagewise 原生智能体；外部 ACP 代理自行管理提示词。
+   */
+  globalSystemPromptProvider?: () => string | undefined;
 }
 
 /**
@@ -221,6 +236,18 @@ export class AgentHost {
   autoCompactionPolicyProvider:
     | (() => AutoCompactionPolicy | undefined)
     | undefined;
+  /**
+   * 新建会话默认工具审批模式的提供者（见
+   * {@link AgentHostConfig.defaultToolApprovalModeProvider}）。
+   */
+  defaultToolApprovalModeProvider:
+    | (() => ToolApprovalMode | undefined)
+    | undefined;
+  /**
+   * 全局提示词提供者（见
+   * {@link AgentHostConfig.globalSystemPromptProvider}）。
+   */
+  globalSystemPromptProvider: (() => string | undefined) | undefined;
   private readonly fileReadTransformers: Record<string, FileTransformer> = {};
   private readonly toolPartSerializers: Record<string, ToolPartSerializer> = {};
   private readonly profiles = new Map<AgentTypes, AgentProfile>();
@@ -234,6 +261,8 @@ export class AgentHost {
     this.environmentSources = cfg.environmentSources;
     this.externalAgentRuntimeFactory = cfg.externalAgentRuntimeFactory;
     this.autoCompactionPolicyProvider = cfg.autoCompactionPolicyProvider;
+    this.defaultToolApprovalModeProvider = cfg.defaultToolApprovalModeProvider;
+    this.globalSystemPromptProvider = cfg.globalSystemPromptProvider;
   }
 
   /**

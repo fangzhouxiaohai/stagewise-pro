@@ -101,3 +101,4 @@ src/pages/generated/
 
 # VC++ redistributable binaries (fetched at build time, not committed)
 etc/windows/redist/
+src/ui/i18n/untranslated.json

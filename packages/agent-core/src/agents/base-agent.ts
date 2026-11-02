@@ -85,6 +85,11 @@ import {
   resolveAutoCompactionTriggerTokens,
   type AutoCompactionPolicy,
 } from './shared/auto-compaction';
+import {
+  computeTokensPerSecond,
+  countStreamedContentChars,
+} from './shared/step-metrics';
+import { appendGlobalSystemPrompt } from './shared/system-prompt';
 import { AgentMemoryWriter, type MemoryWriteReason } from './shared/memory';
 import type { AttachmentsService } from '../services/attachments';
 import { capToolOutput } from '../services/toolbox';
@@ -643,6 +648,13 @@ export abstract class BaseAgent<
    */
   private _stepGeneration = 0;
   private _stepStartTime = 0;
+  /**
+   * 生成速度统计窗口：首次出现文本/推理内容的时间与最后一次内容增长的
+   * 时间。只覆盖模型真正在产出内容的阶段，避免把工具执行时间算进去。
+   */
+  private _generationStartedAt = 0;
+  private _generationEndedAt = 0;
+  private _lastStreamedContentChars = 0;
   private _stepProviderMode = '';
   private _stepCodingPlanId: string | undefined;
   private _stepProviderType: string | undefined;
@@ -1732,6 +1744,9 @@ export abstract class BaseAgent<
     // ignored. Capture it in a local const for the closures below.
     const stepGen = ++this._stepGeneration;
     this._stepStartTime = Date.now();
+    this._generationStartedAt = 0;
+    this._generationEndedAt = 0;
+    this._lastStreamedContentChars = 0;
     // Reset continuation flag at the start of every step so a leftover
     // value from a prior aborted step cannot leak into the tail.
     this._pendingContinue = null;
@@ -1869,6 +1884,27 @@ export abstract class BaseAgent<
       });
       this.emitNotificationEvent('error');
       return;
+    }
+
+    // 发送请求前再做一次压缩检查：恢复会话或上一轮刚越过阈值时，
+    // 先压缩再请求，避免第一次请求就因上下文溢出而中断任务。
+    {
+      const preStepTriggerTokens = resolveAutoCompactionTriggerTokens({
+        policy: this.resolveAutoCompactionPolicy(),
+        configThreshold: this.config.historyCompressionThreshold,
+        contextWindowSize: modelWithOptions.contextWindowSize,
+        hardCapTokens: BaseAgent.HISTORY_COMPRESSION_HARD_CAP_TOKENS,
+      });
+      if (
+        preStepTriggerTokens !== null &&
+        this.state.get().usedTokens > preStepTriggerTokens
+      ) {
+        this.host.logger.debug(
+          `[BaseAgent:${this.instanceId}] Pre-step auto-compaction | usedTokens=${this.state.get().usedTokens} | triggerTokens=${preStepTriggerTokens}`,
+        );
+        await this.compressHistoryInternal('auto');
+        if (this._stepGeneration !== stepGen) return;
+      }
     }
 
     let modelMessages: ModelMessage[];
@@ -2483,6 +2519,27 @@ export abstract class BaseAgent<
   private static readonly KEPT_BUDGET_HARD_CAP_TOKENS = 40_000;
 
   /**
+   * 把设置中的全局提示词追加到系统提示词末尾。
+   *
+   * 全局提示词每次构建上下文时实时读取，修改后对下一个步骤立即生效；
+   * provider 抛错时只记录日志并回退到原始系统提示词，不中断任务。
+   */
+  private applyGlobalSystemPrompt(base: string): string {
+    let extra: string | undefined;
+    try {
+      extra = this.host.globalSystemPromptProvider?.()?.trim();
+    } catch (e) {
+      const error = e as Error;
+      this.host.logger.warn(
+        `[BaseAgent:${this.instanceId}] Failed to read global system prompt: ${error.message}`,
+      );
+      return base;
+    }
+    if (!extra) return base;
+    return appendGlobalSystemPrompt(base, extra);
+  }
+
+  /**
    * 读取宿主注入的自动压缩策略。
    *
    * 偏好服务可能尚未就绪或抛出异常（例如启动早期的宿主），此时记录
@@ -2516,10 +2573,12 @@ export abstract class BaseAgent<
     if (this.externalRuntime?.handles(externalSelection)) {
       return { status: 'unsupported', reason: 'external-runtime' };
     }
-    return await this.compressHistoryInternal();
+    return await this.compressHistoryInternal('manual');
   }
 
-  private async compressHistoryInternal(): Promise<HistoryCompactionResult> {
+  private async compressHistoryInternal(
+    trigger: 'auto' | 'manual',
+  ): Promise<HistoryCompactionResult> {
     // Prevent concurrent compression runs — a second trigger while
     // compression is in-flight would see stale history and produce
     // a redundant (or conflicting) summary.
@@ -2530,6 +2589,12 @@ export abstract class BaseAgent<
       return { status: 'skipped', reason: 'busy' };
     }
     this._isCompressingHistory = true;
+    const startedAt = Date.now();
+    // 先向 UI 暴露“压缩进行中”，以便展示动画；真正的摘要生成可能
+    // 需要数秒到数十秒。
+    this.state.commands.setCompactionState({
+      compaction: { status: 'running', trigger, startedAt },
+    });
     try {
       const state = this.state.get();
       const { history } = state;
@@ -2581,6 +2646,7 @@ export abstract class BaseAgent<
 
         // Scanned everything, it all fits — nothing to compress
         if (i === 0) {
+          this.state.commands.setCompactionState({ compaction: undefined });
           return { status: 'skipped', reason: 'nothing-to-compact' };
         }
       }
@@ -2594,6 +2660,7 @@ export abstract class BaseAgent<
       }
 
       if (boundaryIndex < 1) {
+        this.state.commands.setCompactionState({ compaction: undefined });
         return { status: 'skipped', reason: 'nothing-to-compact' };
       }
 
@@ -2606,6 +2673,7 @@ export abstract class BaseAgent<
 
       const boundaryMessageId = history[boundaryIndex]?.id;
       if (!boundaryMessageId) {
+        this.state.commands.setCompactionState({ compaction: undefined });
         return { status: 'skipped', reason: 'nothing-to-compact' };
       }
 
@@ -2630,6 +2698,7 @@ export abstract class BaseAgent<
         this.host.logger.warn(
           `[BaseAgent:${this.instanceId}] Boundary message not found in history after compression. The user may have undone or manipulated messages.`,
         );
+        this.state.commands.setCompactionState({ compaction: undefined });
         return { status: 'skipped', reason: 'nothing-to-compact' };
       }
       this.host.logger.debug(
@@ -2653,6 +2722,16 @@ export abstract class BaseAgent<
       await this.saveState(boundarySeq >= 0 ? [boundarySeq] : undefined);
 
       this.scheduleMemorySnapshotWrite('compression');
+      this.state.commands.setCompactionState({
+        compaction: {
+          status: 'completed',
+          trigger,
+          startedAt,
+          finishedAt: Date.now(),
+          compressedMessageCount: messagesToCompact.length,
+          keptMessageCount: actualKept,
+        },
+      });
       return {
         status: 'compressed',
         compressedMessageCount: messagesToCompact.length,
@@ -2667,6 +2746,15 @@ export abstract class BaseAgent<
         `[BaseAgent:${this.instanceId}] History compression failed silently: ${error.message}`,
       );
       this.report(error, 'compressHistory');
+      this.state.commands.setCompactionState({
+        compaction: {
+          status: 'failed',
+          trigger,
+          startedAt,
+          finishedAt: Date.now(),
+          errorMessage: error.message.slice(0, 500),
+        },
+      });
       return { status: 'failed', errorMessage: error.message };
     } finally {
       this._isCompressingHistory = false;
@@ -2885,8 +2973,38 @@ export abstract class BaseAgent<
   private async handlePostStep(
     result: StepResult<ToolSet>,
   ): Promise<{ shouldRun: boolean; flushQueue: boolean }> {
+    // 生成速度：只用流式内容增长的窗口，避免把工具执行时间算进去。
+    this.state.commands.setStepTokensPerSecond({
+      tokensPerSecond: computeTokensPerSecond(
+        result.usage.outputTokens,
+        this._generationStartedAt,
+        this._generationEndedAt,
+      ),
+    });
+
+    // 解析当前模型上下文窗口：既用于记录给 UI（保证指示器与后端阈值
+    // 使用同一口径），也用于自动压缩触发判断。解析失败时回退到上一次
+    // 已知窗口，仍能继续做压缩检查。
+    let contextWindowSize: number | undefined =
+      this.state.get().contextWindowSize;
+    try {
+      const postStepState = this.state.get();
+      contextWindowSize = (
+        await this.host.models.getWithOptions(postStepState.activeModelId, '', {
+          [PROVIDER_INSTANCE_ID_METADATA_KEY]:
+            postStepState.activeProviderInstanceId,
+        })
+      ).contextWindowSize;
+    } catch {
+      // Model may have been deleted between step start and finish — keep
+      // the last known window (if any) and skip resolution failures.
+    }
+
     this.state.commands.recordUsage({
       totalTokens: result.usage.totalTokens ?? 0,
+      ...(contextWindowSize !== undefined && contextWindowSize > 0
+        ? { contextWindowSize }
+        : {}),
     });
 
     this.updateUsageWarning(result);
@@ -2937,28 +3055,26 @@ export abstract class BaseAgent<
     // 宿主注入的自动压缩策略优先（用户设置开关打开时按比例精确触发，
     // 关闭时完全不做自动压缩）；未注入策略时沿用智能体配置阈值，
     // 并由绝对上限约束，避免大上下文模型堆积过多 token。
-    try {
-      const postStepState = this.state.get();
-      const contextWindowSize = (
-        await this.host.models.getWithOptions(postStepState.activeModelId, '', {
-          [PROVIDER_INSTANCE_ID_METADATA_KEY]:
-            postStepState.activeProviderInstanceId,
-        })
-      ).contextWindowSize;
+    //
+    // 这里必须 await 压缩：压缩完成后再让步骤循环继续，下一次模型请求
+    // 才会使用压缩后的历史，既不会因上下文溢出中断任务，也能在压缩
+    // 结束后立刻继续手头的工作。
+    if (contextWindowSize !== undefined) {
       const triggerTokens = resolveAutoCompactionTriggerTokens({
         policy: this.resolveAutoCompactionPolicy(),
         configThreshold: this.config.historyCompressionThreshold,
         contextWindowSize,
         hardCapTokens: BaseAgent.HISTORY_COMPRESSION_HARD_CAP_TOKENS,
       });
+      this.host.logger.debug(
+        `[BaseAgent:${this.instanceId}] Auto-compaction check | usedTokens=${this.state.get().usedTokens} | contextWindow=${contextWindowSize} | triggerTokens=${triggerTokens ?? 'disabled'}`,
+      );
       if (
         triggerTokens !== null &&
         this.state.get().usedTokens > triggerTokens
       ) {
-        void this.compressHistoryInternal();
+        await this.compressHistoryInternal('auto');
       }
-    } catch {
-      // Model may have been deleted between step start and finish — skip compaction check
     }
 
     const userWantsToContinue = (await this.onStepFinished(result)) ?? true;
@@ -3046,7 +3162,9 @@ export abstract class BaseAgent<
 
     const filteredUIMsgs = await this.transformMessagesBeforeStep(messages);
 
-    const systemPrompt = await this.getSystemPrompt();
+    const systemPrompt = this.applyGlobalSystemPrompt(
+      await this.getSystemPrompt(),
+    );
 
     const modelMessages = await this.transformMessagesToModelMessages(
       filteredUIMsgs,
@@ -3373,6 +3491,20 @@ export abstract class BaseAgent<
         ? structuredClone(lastAssistantMessage)
         : undefined,
     })) {
+      // 跟踪流式内容的增长窗口，用于计算生成速度（tok/s）。
+      const streamedChars = countStreamedContentChars(
+        uiMessage.parts as unknown as ReadonlyArray<{
+          type?: string;
+          text?: unknown;
+        }>,
+      );
+      if (streamedChars > this._lastStreamedContentChars) {
+        const now = Date.now();
+        if (this._generationStartedAt === 0) this._generationStartedAt = now;
+        this._generationEndedAt = now;
+        this._lastStreamedContentChars = streamedChars;
+      }
+
       this.state.commands.mergeUIMessageStream({
         uiMessage,
         onApprovalRequested: ({ approvalId, toolPart }) => {

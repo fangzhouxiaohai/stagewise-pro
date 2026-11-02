@@ -7,6 +7,7 @@ import {
   type HostModels,
   type HostPaths,
   type OutputProtocol,
+  type ToolApprovalMode,
 } from '@stagewise/agent-core';
 import {
   AGENTS_MD_DOMAIN_ID,
@@ -80,6 +81,16 @@ export interface BrowserAgentHostDeps {
    * @note 省略时沿用智能体自身配置的压缩阈值。
    */
   autoCompactionPolicyProvider?: () => AutoCompactionPolicy | undefined;
+  /**
+   * 新建会话默认工具审批模式。浏览器端读取偏好
+   * `agent.defaultToolApprovalMode`（首次安装默认 Always allow）。
+   */
+  defaultToolApprovalModeProvider?: () => ToolApprovalMode | undefined;
+  /**
+   * 全局提示词提供者：读取偏好 `agent.globalSystemPrompt`，追加到
+   * 所有原生智能体的系统提示词末尾。
+   */
+  globalSystemPromptProvider?: () => string | undefined;
 }
 
 /**
@@ -112,6 +123,8 @@ export function createBrowserAgentHost(deps: BrowserAgentHostDeps): AgentHost {
     }),
     environmentSources: deps.environmentSources,
     autoCompactionPolicyProvider: deps.autoCompactionPolicyProvider,
+    defaultToolApprovalModeProvider: deps.defaultToolApprovalModeProvider,
+    globalSystemPromptProvider: deps.globalSystemPromptProvider,
     desktop: {
       async revealPathInFileManager(absolutePath: string) {
         if (!existsSync(absolutePath)) {

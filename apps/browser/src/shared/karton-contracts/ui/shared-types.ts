@@ -1034,6 +1034,15 @@ export const userPreferencesSchema = z.object({
       newTabPage: pageSettingSchema.default({ type: 'home' }),
       /** Default page opened when the browser starts */
       startupPage: pageSettingSchema.default({ type: 'home' }),
+      /**
+       * 界面语言。默认简体中文；切换后聊天、设置等界面文案立即切换。
+       */
+      language: z.enum(['zh-CN', 'en']).default('zh-CN'),
+      /**
+       * 界面文字尺寸：S / M / L / XL / XXL。
+       * 通过根字号缩放实现，默认 M。
+       */
+      uiTextSize: z.enum(['s', 'm', 'l', 'xl', 'xxl']).default('m'),
       /** UI zoom percentage applied to the Stagewise interface (70-130) */
       uiZoomPercentage: z.number().min(70).max(130).default(100),
       /** Global terminal zoom percentage applied to all terminal tabs (50-150) */
@@ -1056,6 +1065,8 @@ export const userPreferencesSchema = z.object({
     .default({
       newTabPage: { type: 'home' },
       startupPage: { type: 'home' },
+      language: 'zh-CN',
+      uiTextSize: 'm',
       uiZoomPercentage: 100,
       terminalZoomPercentage: 100,
       fileCodeZoomPercentage: 100,
@@ -1166,6 +1177,23 @@ export const userPreferencesSchema = z.object({
        */
       autoCompactContext: z.boolean().default(true),
       /**
+       * 是否在聊天输入框旁显示上下文占用百分比与最近一步的生成速度
+       * （例如 `42% · 18 tok/s`）。默认开启。
+       */
+      showContextStats: z.boolean().default(true),
+      /**
+       * 新建会话的默认工具审批模式。默认 `alwaysAllow`，让新会话首次
+       * 使用即无需逐条确认；单个会话仍可在输入框里临时切换。
+       */
+      defaultToolApprovalMode: z
+        .enum(['alwaysAsk', 'alwaysAllow', 'smart'])
+        .default('alwaysAllow'),
+      /**
+       * 全局提示词：追加到每个会话系统提示词末尾的额外指令。
+       * 空字符串表示不追加。修改后对下一个步骤立即生效。
+       */
+      globalSystemPrompt: z.string().default(''),
+      /**
        * User-configured fallback chains for background utility tasks.
        * Each array is an ordered list of model entries; the agent tries
        * each in order until one succeeds. An empty array falls back
@@ -1275,6 +1303,9 @@ export const userPreferencesSchema = z.object({
       enabledGlobalSkillDirs: [],
       disabledGlobalSkills: [],
       autoCompactContext: true,
+      showContextStats: true,
+      defaultToolApprovalMode: 'alwaysAllow',
+      globalSystemPrompt: '',
       utilityModels: {
         titleGeneration: DEFAULT_TITLE_GENERATION_ENTRIES,
         contextCompression: DEFAULT_HISTORY_COMPRESSION_ENTRIES,
@@ -1375,6 +1406,8 @@ export const defaultUserPreferences: UserPreferences = {
   general: {
     newTabPage: { type: 'home' },
     startupPage: { type: 'home' },
+    language: 'zh-CN',
+    uiTextSize: 'm',
     uiZoomPercentage: 100,
     terminalZoomPercentage: 100,
     fileCodeZoomPercentage: 100,
@@ -1394,6 +1427,9 @@ export const defaultUserPreferences: UserPreferences = {
     enabledGlobalSkillDirs: [],
     disabledGlobalSkills: [],
     autoCompactContext: true,
+    showContextStats: true,
+    defaultToolApprovalMode: 'alwaysAllow',
+    globalSystemPrompt: '',
     utilityModels: {
       titleGeneration: DEFAULT_TITLE_GENERATION_ENTRIES,
       contextCompression: DEFAULT_HISTORY_COMPRESSION_ENTRIES,

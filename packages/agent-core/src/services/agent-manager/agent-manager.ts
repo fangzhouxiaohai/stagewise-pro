@@ -1093,7 +1093,11 @@ export class AgentManager extends DisposableService {
       history: [],
       queuedMessages: [],
       activeModelId: 'claude-sonnet-4.6',
-      toolApprovalMode: DEFAULT_TOOL_APPROVAL_MODE,
+      // 新建会话默认审批模式：宿主偏好优先（浏览器端默认 Always allow），
+      // 未接线时回退到核心默认值。
+      toolApprovalMode:
+        this.host.defaultToolApprovalModeProvider?.() ??
+        DEFAULT_TOOL_APPROVAL_MODE,
       pendingApprovals: {},
       inputState: initialInputState ?? '',
       usedTokens: 0,

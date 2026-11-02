@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { Select } from '@stagewise/stage-ui/components/select';
@@ -66,6 +67,222 @@ function PowerSaveBlockerSetting() {
 }
 
 // =============================================================================
+// Interface Language / Text Size / Default Tool Approval Settings
+// =============================================================================
+
+const LANGUAGE_OPTIONS = [
+  { value: 'zh-CN', label: '简体中文' },
+  { value: 'en', label: 'English' },
+];
+
+const TEXT_SIZE_OPTIONS = [
+  { value: 's', label: 'S' },
+  { value: 'm', label: 'M' },
+  { value: 'l', label: 'L' },
+  { value: 'xl', label: 'XL' },
+  { value: 'xxl', label: 'XXL' },
+];
+
+const TOOL_APPROVAL_OPTIONS = [
+  { value: 'alwaysAsk', label: 'Always ask' },
+  { value: 'smart', label: 'Smart approval' },
+  { value: 'alwaysAllow', label: 'Always allow' },
+];
+
+function SettingSelectRow({
+  id,
+  title,
+  description,
+  value,
+  options,
+  onChange,
+  widthClassName = 'w-40',
+}: {
+  id: string;
+  title: string;
+  description: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+  widthClassName?: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <label htmlFor={id}>
+          <h3 className="font-medium text-base text-foreground">{title}</h3>
+          <p className="text-muted-foreground text-sm">{description}</p>
+        </label>
+      </div>
+      <Select
+        value={value}
+        onValueChange={onChange}
+        items={options}
+        size="sm"
+        triggerVariant="secondary"
+        triggerClassName={`${widthClassName} mt-1 shrink-0`}
+        side="bottom"
+      />
+    </div>
+  );
+}
+
+/**
+ * 界面语言选择。默认简体中文；切换后立即生效，无需重启。
+ */
+function InterfaceLanguageSetting() {
+  const language = useKartonState((s) => s.preferences.general.language);
+  const updatePreferences = useKartonProcedure((p) => p.preferences.update);
+
+  const handleChange = async (value: string) => {
+    const patch: Patch = {
+      op: 'replace',
+      path: ['general', 'language'],
+      value,
+    };
+    await updatePreferences([patch]);
+  };
+
+  return (
+    <SettingSelectRow
+      id="general-language"
+      title="Interface language"
+      description="Language used for buttons, settings, and status messages. Takes effect immediately."
+      value={language}
+      options={LANGUAGE_OPTIONS}
+      onChange={handleChange}
+      widthClassName="w-36"
+    />
+  );
+}
+
+/**
+ * 界面文字尺寸选择（S / M / L / XL / XXL）。
+ */
+function TextSizeSetting() {
+  const uiTextSize = useKartonState((s) => s.preferences.general.uiTextSize);
+  const updatePreferences = useKartonProcedure((p) => p.preferences.update);
+
+  const handleChange = async (value: string) => {
+    const patch: Patch = {
+      op: 'replace',
+      path: ['general', 'uiTextSize'],
+      value,
+    };
+    await updatePreferences([patch]);
+  };
+
+  return (
+    <SettingSelectRow
+      id="general-text-size"
+      title="Text size"
+      description="Scale interface text from small to extra-extra-large. Layout spacing scales with it."
+      value={uiTextSize}
+      options={TEXT_SIZE_OPTIONS}
+      onChange={handleChange}
+      widthClassName="w-24"
+    />
+  );
+}
+
+/**
+ * 新建会话的默认工具审批模式。默认 Always allow。
+ */
+function DefaultToolApprovalSetting() {
+  const defaultToolApprovalMode = useKartonState(
+    (s) => s.preferences.agent.defaultToolApprovalMode,
+  );
+  const updatePreferences = useKartonProcedure((p) => p.preferences.update);
+
+  const handleChange = async (value: string) => {
+    const patch: Patch = {
+      op: 'replace',
+      path: ['agent', 'defaultToolApprovalMode'],
+      value,
+    };
+    await updatePreferences([patch]);
+  };
+
+  return (
+    <SettingSelectRow
+      id="agent-default-tool-approval"
+      title="Default tool approval"
+      description="Approval mode applied to every new chat. Existing chats keep their own setting; you can still switch it per chat from the input bar."
+      value={defaultToolApprovalMode}
+      options={TOOL_APPROVAL_OPTIONS}
+      onChange={handleChange}
+      widthClassName="w-44"
+    />
+  );
+}
+
+// =============================================================================
+// Global System Prompt Setting Component
+// =============================================================================
+
+/**
+ * 全局提示词：追加到每个会话系统提示词末尾的额外指令。
+ *
+ * 使用本地草稿 + 保存按钮，避免每次按键都写偏好文件；保存后对下一个
+ * 步骤立即生效。
+ */
+function GlobalSystemPromptSetting() {
+  const savedPrompt = useKartonState(
+    (s) => s.preferences.agent.globalSystemPrompt,
+  );
+  const updatePreferences = useKartonProcedure((p) => p.preferences.update);
+  const [draft, setDraft] = useState(savedPrompt);
+  const dirty = draft !== savedPrompt;
+
+  useEffect(() => {
+    setDraft(savedPrompt);
+  }, [savedPrompt]);
+
+  const handleSave = async () => {
+    const patch: Patch = {
+      op: 'replace',
+      path: ['agent', 'globalSystemPrompt'],
+      value: draft,
+    };
+    await updatePreferences([patch]);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div>
+        <label htmlFor="agent-global-system-prompt">
+          <h3 className="font-medium text-base text-foreground">
+            Global instructions
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            Extra instructions appended to the system prompt of every chat, for
+            example preferred language, coding conventions, or things the agent
+            should always avoid.
+          </p>
+        </label>
+      </div>
+      <textarea
+        id="agent-global-system-prompt"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        spellCheck={false}
+        rows={6}
+        placeholder="e.g. Always answer in Chinese. Prefer minimal diffs and run tests before finishing."
+        className="scrollbar-subtle w-full resize-y rounded-lg border border-derived bg-surface-1 p-3 text-foreground text-sm outline-none ring-0 transition-colors placeholder:text-subtle-foreground focus:border-derived-strong"
+      />
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-muted-foreground text-xs">
+          Applies to the next step of every chat.
+        </span>
+        <Button size="sm" onClick={() => void handleSave()} disabled={!dirty}>
+          Save
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // Auto Compact Context Setting Component
 // =============================================================================
 
@@ -100,7 +317,7 @@ function AutoCompactContextSetting() {
           <p className="text-muted-foreground text-sm">
             Summarize the conversation automatically once a session reaches 80%
             of the model's context window. When disabled, compress manually from
-            the chat input with <code className="text-xs">/compact</code>.
+            the chat input with /compact.
           </p>
         </label>
       </div>
@@ -108,6 +325,56 @@ function AutoCompactContextSetting() {
       <Switch
         id="agent-auto-compact-context"
         checked={autoCompactContext}
+        onCheckedChange={handleChange}
+        size="xs"
+        className="mt-1 shrink-0"
+      />
+    </div>
+  );
+}
+
+// =============================================================================
+// Context Stats Setting Component
+// =============================================================================
+
+/**
+ * 上下文与速度显示开关。
+ *
+ * 打开后在聊天输入框的模型选择器旁并排显示上下文占用百分比和
+ * 最近一步的生成速度（例如 `42% · 18 tok/s`）。
+ */
+function ShowContextStatsSetting() {
+  const showContextStats = useKartonState(
+    (s) => s.preferences.agent.showContextStats,
+  );
+  const updatePreferences = useKartonProcedure((p) => p.preferences.update);
+
+  const handleChange = async (checked: boolean) => {
+    const patch: Patch = {
+      op: 'replace',
+      path: ['agent', 'showContextStats'],
+      value: checked,
+    };
+    await updatePreferences([patch]);
+  };
+
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <label htmlFor="agent-show-context-stats">
+          <h3 className="font-medium text-base text-foreground">
+            Show context usage and speed
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            Show the context window usage next to the model selector, together
+            with the latest generation speed (for example 200 tok/s).
+          </p>
+        </label>
+      </div>
+
+      <Switch
+        id="agent-show-context-stats"
+        checked={showContextStats}
         onCheckedChange={handleChange}
         size="xs"
         className="mt-1 shrink-0"
@@ -299,8 +566,13 @@ export function GeneralSettingsSection() {
             <h1 className="font-semibold text-foreground text-xl">General</h1>
           </div>
           <section className="space-y-6">
+            <InterfaceLanguageSetting />
+            <TextSizeSetting />
+            <DefaultToolApprovalSetting />
+            <GlobalSystemPromptSetting />
             <PowerSaveBlockerSetting />
             <AutoCompactContextSetting />
+            <ShowContextStatsSetting />
           </section>
         </div>
       </OverlayScrollbar>

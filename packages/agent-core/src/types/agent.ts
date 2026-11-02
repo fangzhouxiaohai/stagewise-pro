@@ -125,6 +125,35 @@ export type AgentState<TMessage = AgentMessage> = {
     usedPercent: number;
     resetsAt: string;
   };
+  /**
+   * @persistence ephemeral — reset on resume; generation throughput of the
+   * most recently completed step (tokens per second over the streaming
+   * window). `undefined` when the step produced no measurable output.
+   */
+  lastStepTokensPerSecond?: number;
+  /**
+   * @persistence ephemeral — reset on resume; context-compaction lifecycle
+   * surfaced to the chat UI.
+   *
+   * - `running`：压缩进行中，UI 展示动画；
+   * - `completed`：最近一次压缩成功，携带折叠/保留的消息数；
+   * - `failed`：最近一次压缩失败，智能体继续以未压缩历史运行。
+   */
+  compaction?: {
+    status: 'running' | 'completed' | 'failed';
+    /** 触发来源：自动阈值触发或输入框 `/compact` 手动触发。 */
+    trigger: 'auto' | 'manual';
+    /** 压缩开始时间（epoch ms）。 */
+    startedAt: number;
+    /** 压缩结束时间（epoch ms），仅 completed/failed 时有值。 */
+    finishedAt?: number;
+    /** 被折叠进摘要的消息数量，仅 completed 时有值。 */
+    compressedMessageCount?: number;
+    /** 压缩后仍保留原文的消息数量，仅 completed 时有值。 */
+    keptMessageCount?: number;
+    /** 失败原因，仅 failed 时有值；用于日志与界面提示。 */
+    errorMessage?: string;
+  };
 };
 
 export type ToolboxState = {

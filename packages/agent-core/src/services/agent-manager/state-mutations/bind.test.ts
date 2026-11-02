@@ -49,6 +49,29 @@ describe('state-mutations/bind', () => {
     expect(store.get().agents.instances.a1?.state.title).toBe('renamed');
   });
 
+  it('records generation speed and compaction state', () => {
+    const store = new AgentStore(emptySystemState());
+    upsertAgentInstance(store, 'a1', makeEnvelope(minimalState()));
+    const commands = bindStateMutations(store, 'a1');
+
+    commands.setStepTokensPerSecond({ tokensPerSecond: 42 });
+    expect(store.get().agents.instances.a1?.state.lastStepTokensPerSecond).toBe(
+      42,
+    );
+
+    commands.setCompactionState({
+      compaction: { status: 'running', trigger: 'auto', startedAt: 1000 },
+    });
+    expect(store.get().agents.instances.a1?.state.compaction).toEqual({
+      status: 'running',
+      trigger: 'auto',
+      startedAt: 1000,
+    });
+
+    commands.setCompactionState({ compaction: undefined });
+    expect(store.get().agents.instances.a1?.state.compaction).toBeUndefined();
+  });
+
   it('moves a queued message to the selected index', () => {
     const store = new AgentStore(emptySystemState());
     upsertAgentInstance(

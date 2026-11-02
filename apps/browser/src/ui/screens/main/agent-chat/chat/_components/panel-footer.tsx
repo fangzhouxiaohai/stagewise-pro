@@ -1211,6 +1211,14 @@ export const ChatPanelFooter = memo(function ChatPanelFooter({
       ? s.agents.instances[openAgent]?.state.contextWindowSize
       : undefined,
   );
+  const showContextStats = useKartonState(
+    (s) => s.preferences.agent.showContextStats !== false,
+  );
+  const tokensPerSecond = useKartonState((s) =>
+    openAgent
+      ? s.agents.instances[openAgent]?.state.lastStepTokensPerSecond
+      : undefined,
+  );
   const activeModelId = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.activeModelId : null,
   );
@@ -1969,11 +1977,14 @@ export const ChatPanelFooter = memo(function ChatPanelFooter({
             onModelChange={handleModelChange}
             onStop={canStopAgent ? stableAbortAgent : undefined}
             showContextUsageRing={
-              !!displayedUsedTokens && (isVerboseMode || contextUsed > 80)
+              !!displayedUsedTokens &&
+              (showContextStats || isVerboseMode || contextUsed > 80)
             }
             contextUsedPercentage={contextUsed}
             contextUsedKb={displayedUsedTokens ? displayedUsedTokens / 1000 : 0}
             contextMaxKb={maxTokens ? maxTokens / 1000 : 0}
+            showContextStats={showContextStats}
+            tokensPerSecond={tokensPerSecond}
             hasQueuedMessages={hasQueuedMessages}
             onFlushQueue={handleFlushQueue}
             onFocus={onInputFocus}

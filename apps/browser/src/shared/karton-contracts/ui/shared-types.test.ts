@@ -616,3 +616,72 @@ describe('userPreferencesSchema 自动压缩上下文默认值', () => {
     expect(parsed.agent.autoCompactContext).toBe(false);
   });
 });
+
+describe('userPreferencesSchema 上下文与速度显示默认值', () => {
+  it('未显式配置时默认显示上下文与速度', () => {
+    const parsed = userPreferencesSchema.parse({});
+
+    expect(parsed.agent.showContextStats).toBe(true);
+  });
+
+  it('保留用户关闭上下文与速度显示的选择', () => {
+    const parsed = userPreferencesSchema.parse({
+      agent: { showContextStats: false },
+    });
+
+    expect(parsed.agent.showContextStats).toBe(false);
+  });
+});
+
+describe('userPreferencesSchema 语言与文字尺寸默认值', () => {
+  it('默认使用简体中文与 M 字号', () => {
+    const parsed = userPreferencesSchema.parse({});
+
+    expect(parsed.general.language).toBe('zh-CN');
+    expect(parsed.general.uiTextSize).toBe('m');
+  });
+
+  it('保留用户选择的英文与 XXL 字号', () => {
+    const parsed = userPreferencesSchema.parse({
+      general: { language: 'en', uiTextSize: 'xxl' },
+    });
+
+    expect(parsed.general.language).toBe('en');
+    expect(parsed.general.uiTextSize).toBe('xxl');
+  });
+
+  it('拒绝不支持的语言与字号', () => {
+    expect(
+      userPreferencesSchema.safeParse({ general: { language: 'fr' } }).success,
+    ).toBe(false);
+    expect(
+      userPreferencesSchema.safeParse({ general: { uiTextSize: 'xxxl' } })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe('userPreferencesSchema 默认工具审批模式', () => {
+  it('首次安装默认 Always allow', () => {
+    const parsed = userPreferencesSchema.parse({});
+
+    expect(parsed.agent.defaultToolApprovalMode).toBe('alwaysAllow');
+  });
+
+  it('保留用户选择的默认审批模式', () => {
+    const parsed = userPreferencesSchema.parse({
+      agent: { defaultToolApprovalMode: 'alwaysAsk' },
+    });
+
+    expect(parsed.agent.defaultToolApprovalMode).toBe('alwaysAsk');
+  });
+
+  it('全局提示词默认为空并保留用户输入', () => {
+    expect(userPreferencesSchema.parse({}).agent.globalSystemPrompt).toBe('');
+
+    const parsed = userPreferencesSchema.parse({
+      agent: { globalSystemPrompt: '始终使用中文回答。' },
+    });
+    expect(parsed.agent.globalSystemPrompt).toBe('始终使用中文回答。');
+  });
+});

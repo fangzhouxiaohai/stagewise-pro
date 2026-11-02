@@ -11,6 +11,7 @@ import { Virtuoso } from 'react-virtuoso';
 import { MessageUser } from './message-user';
 import { MessageAssistant } from './message-assistant';
 import { MessageLoading } from './message-loading';
+import { MessageCompaction } from './message-compaction';
 import { MessageRuntimeError } from './message-runtime-error';
 import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import { useTrack } from '@ui/hooks/use-track';
@@ -355,6 +356,10 @@ export const ChatHistory = ({ flushTop = false }: { flushTop?: boolean }) => {
   const [openAgent] = useOpenAgent();
   const isWorking = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.isWorking : false,
+  );
+  // 上下文压缩状态：进行中/完成/失败都通过同一个状态位驱动对话内提示。
+  const compaction = useKartonState((s) =>
+    openAgent ? s.agents.instances[openAgent]?.state.compaction : undefined,
   );
   const history = useKartonState((s) =>
     openAgent
@@ -1105,31 +1110,33 @@ export const ChatHistory = ({ flushTop = false }: { flushTop?: boolean }) => {
       }
 
       const messageComponent = (
-        <MessageBrowserContextProvider value={browserCtx}>
-          {message.role === 'user' ? (
-            <MessageUser
-              message={message as AgentMessage & { role: 'user' }}
-              isLastMessage={isLastMessage}
-              isWorking={curIsWorking}
-              hasSubsequentFileModifications={
-                curHasFileMods.get(message.id) ?? false
-              }
-            />
-          ) : (
-            <MessageAssistant
-              agentId={openAgent!}
-              message={message as AgentMessage & { role: 'assistant' }}
-              isLastMessage={isLastMessage}
-              isWorking={curIsWorking}
-              showBetweenStepsIndicator={
-                isLastMessage ? curShowBetweenSteps : false
-              }
-              hasSubsequentFileModifications={
-                curHasFileMods.get(message.id) ?? false
-              }
-            />
-          )}
-        </MessageBrowserContextProvider>
+        <div data-i18n-skip>
+          <MessageBrowserContextProvider value={browserCtx}>
+            {message.role === 'user' ? (
+              <MessageUser
+                message={message as AgentMessage & { role: 'user' }}
+                isLastMessage={isLastMessage}
+                isWorking={curIsWorking}
+                hasSubsequentFileModifications={
+                  curHasFileMods.get(message.id) ?? false
+                }
+              />
+            ) : (
+              <MessageAssistant
+                agentId={openAgent!}
+                message={message as AgentMessage & { role: 'assistant' }}
+                isLastMessage={isLastMessage}
+                isWorking={curIsWorking}
+                showBetweenStepsIndicator={
+                  isLastMessage ? curShowBetweenSteps : false
+                }
+                hasSubsequentFileModifications={
+                  curHasFileMods.get(message.id) ?? false
+                }
+              />
+            )}
+          </MessageBrowserContextProvider>
+        </div>
       );
 
       // Attach ref to last assistant message wrapper for height measurement
@@ -1350,6 +1357,11 @@ export const ChatHistory = ({ flushTop = false }: { flushTop?: boolean }) => {
                 </TooltipTrigger>
                 <TooltipContent>Scroll to bottom</TooltipContent>
               </Tooltip>
+            </div>
+          )}
+          {compaction && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-[calc(52px+var(--status-card-height,0px))] z-10 flex justify-center px-4">
+              <MessageCompaction compaction={compaction} />
             </div>
           )}
         </div>
