@@ -76,6 +76,40 @@
       outline-color, box-shadow;
     transition-timing-function: ease-out;
   }
+
+  /* 明暗主题切换时的过渡：只动画颜色相关属性，避免布局抖动 */
+  :root.color-scheme-transition,
+  :root.color-scheme-transition *,
+  :root.color-scheme-transition *::before,
+  :root.color-scheme-transition *::after {
+    transition-duration: 220ms, 220ms, 220ms, 220ms, 220ms;
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: ease-out;
+  }
+
+  /* View Transitions：关闭默认交叉淡入，改由 JS 播放圆形扩散 */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  ::view-transition-old(root) {
+    z-index: 1;
+  }
+
+  ::view-transition-new(root) {
+    z-index: 2;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root.color-scheme-transition,
+    :root.color-scheme-transition *,
+    :root.color-scheme-transition *::before,
+    :root.color-scheme-transition *::after {
+      transition: none;
+    }
+  }
 } 
 
 @layer components {

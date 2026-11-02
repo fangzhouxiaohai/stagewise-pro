@@ -50,6 +50,26 @@
   切换语言后菜单立即更新，无需重启。
 - 渲染进程的界面文案仍由 `apps/browser/src/ui/i18n` 字典层负责。
 
+## 二点六、侧栏快速明暗切换
+
+- 位置：左侧栏底部、设置齿轮左侧新增月亮/太阳按钮。
+- 行为：读取 `globalConfig.appColorScheme` 与系统主题计算当前是否暗色；
+  点击后切换为显式的 `light` / `dark`（不再跟随系统），图标与悬浮提示同步变化；
+  设置 → 个性化中的“应用配色”选项会同步显示当前值。
+- 实现：`sidebar-auth-footer.tsx` 调用 `config.set({ appColorScheme })`；
+  `src/shared/color-scheme.ts` 提供 `isDarkColorScheme` / `resolveNextColorScheme`
+  纯函数并配有单测；`nativeTheme.themeSource` 更新后，UI 的 `systemTheme`
+  状态驱动根节点 `dark` class。
+- 切换过渡：使用 View Transitions API 做圆形扩散——以按钮中心为圆心，
+  新主题从左下角以弧形向右上角扩展覆盖整个视口，480ms、
+  `cubic-bezier(0.16, 1, 0.3, 1)`；点击后根节点先切换 `dark`，
+  再由 `::view-transition-new(root)` 的 `clip-path` 动画完成揭示。
+  不支持 View Transitions 或系统开启“减少动态效果”时，降级为 220ms 颜色淡入。
+- 实现：`src/ui/utils/color-scheme-transition.ts`（半径计算 + 过渡播放，
+  含单测）；`PersonalizationThemeSyncer` 在扩散期间跳过 CSS 颜色过渡，
+  避免边缘拖影；`browser-base.css` 中关闭默认交叉淡入并设置层级。
+- 悬浮提示文案已加入中英词典（“Switch to dark mode”/“切换到暗黑模式”）。
+
 ## 三、默认工具审批模式（默认 Always allow）
 
 - 位置：设置 → 智能体 → 常规 → 默认工具审批。
@@ -125,8 +145,8 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装包：`stagewise-1.31.10-x64-setup.exe`（205,878,272 字节，
-  SHA256 `AC81891AC86FE4C2B8AE9EA8526301B3CCFAD1F07C57E97FCE5B48129E51C692`，
+- 安装包：`stagewise-1.31.15-x64-setup.exe`（205,884,416 字节，
+  SHA256 `5CE676F1196CB090C673121E51822E08388AA0548975C76F232BF688798C995A`，
   release 渠道，覆盖安装保留用户数据）。
 - 验证方式：安装后启动应用，通过 Chrome DevTools Protocol 截图设置页，确认：
   - 设置页导航与内容为中文；

@@ -7,8 +7,20 @@ import {
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import { useTrack } from '@ui/hooks/use-track';
-import { LoaderCircleIcon } from 'lucide-react';
-import { useCallback } from 'react';
+import {
+  COLOR_SCHEME_TRANSITION_CLASS,
+  COLOR_SCHEME_TRANSITION_DURATION_MS,
+  isDarkColorScheme,
+  resolveNextColorScheme,
+} from '@shared/color-scheme';
+import { playColorSchemeRevealTransition } from '@ui/utils/color-scheme-transition';
+import { LoaderCircleIcon, MoonIcon, SunIcon } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import {
   IconDownload4Outline18,
   IconGear3Outline18,
@@ -30,11 +42,25 @@ export function SidebarAuthFooter() {
   const quitAndInstall = useKartonProcedure(
     (p) => p.autoUpdate.quitAndInstall.fire,
   );
+  const setGlobalConfig = useKartonProcedure((p) => p.config.set);
+  const colorSchemeTransitionTimeoutRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (colorSchemeTransitionTimeoutRef.current !== undefined) {
+        window.clearTimeout(colorSchemeTransitionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const appScreenMode = useKartonState((s) => s.appScreen.mode);
   const userAccount = useKartonState((s) => s.userAccount);
   const isMacOs = useKartonState((s) => s.appInfo.platform === 'darwin');
   const closedLidSleep = useKartonState((s) => s.closedLidSleep);
+  const appColorScheme = useKartonState(
+    (s) => s.globalConfig.appColorScheme ?? 'system',
+  );
+  const systemTheme = useKartonState((s) => s.systemTheme);
   const updateStatus = useKartonState((s) => s.autoUpdate.status);
   const updateVersion = useKartonState(
     (s) => s.autoUpdate.updateInfo?.releaseName,
@@ -47,6 +73,7 @@ export function SidebarAuthFooter() {
   const plan = userAccount.subscription?.plan;
   const avatarChar = email ? email[0]!.toUpperCase() : null;
   const isSettingsOpen = appScreenMode === 'settings';
+  const isDark = isDarkColorScheme(appColorScheme, systemTheme);
   const isUpdateReady = updateStatus === 'ready';
   const updateVersionLabel = updateVersion ? ` ${updateVersion}` : '';
   const updateLabel = isUpdateReady
@@ -67,6 +94,49 @@ export function SidebarAuthFooter() {
     track('account-opened');
     void openSettings({ section: 'account' });
   }, [openSettings, track]);
+
+  /**
+   * 快速切换明暗主题。
+   *
+   * 当前为 system 且系统是暗色时，切到 light；其余情况切到 dark。
+   * 切换后会把 appColorScheme 固定为显式值（不再跟随系统），
+   * 与设置 → 个性化中的主题选项保持一致。
+   */
+  const handleToggleColorScheme = useCallback(
+    (event: ReactMouseEvent<HTMLButtonElement>) => {
+      const nextScheme = resolveNextColorScheme(isDark);
+      const root = document.documentElement;
+      const apply = () => root.classList.toggle('dark', nextScheme === 'dark');
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      const usedReveal = playColorSchemeRevealTransition({
+        origin: {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        },
+        apply,
+      });
+
+      if (!usedReveal) {
+        // 不支持 View Transitions 或用户要求减少动态效果时，退化为颜色淡入。
+        if (colorSchemeTransitionTimeoutRef.current !== undefined) {
+          window.clearTimeout(colorSchemeTransitionTimeoutRef.current);
+        }
+        root.classList.add(COLOR_SCHEME_TRANSITION_CLASS);
+        void root.offsetWidth;
+        apply();
+        colorSchemeTransitionTimeoutRef.current = window.setTimeout(() => {
+          root.classList.remove(COLOR_SCHEME_TRANSITION_CLASS);
+          colorSchemeTransitionTimeoutRef.current = undefined;
+        }, COLOR_SCHEME_TRANSITION_DURATION_MS);
+      }
+
+      void setGlobalConfig({
+        appColorScheme: nextScheme,
+      });
+    },
+    [isDark, setGlobalConfig],
+  );
 
   const handleToggleClosedLidSleep = useCallback(() => {
     if (closedLidSleep.isChanging) return;
@@ -176,6 +246,29 @@ export function SidebarAuthFooter() {
               </TooltipContent>
             </Tooltip>
           )}
+
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={
+                  isDark ? 'Switch to light mode' : 'Switch to dark mode'
+                }
+                className="app-no-drag shrink-0"
+                onClick={handleToggleColorScheme}
+              >
+                {isDark ? (
+                  <SunIcon className="size-4" />
+                ) : (
+                  <MoonIcon className="size-4" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            </TooltipContent>
+          </Tooltip>
 
           <Tooltip>
             <TooltipTrigger>

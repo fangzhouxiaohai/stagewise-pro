@@ -1,11 +1,28 @@
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { getPersonalizationTheme } from '@shared/personalization-themes';
 import { useKartonState } from '@ui/hooks/use-karton';
+import {
+  COLOR_SCHEME_TRANSITION_CLASS,
+  COLOR_SCHEME_TRANSITION_DURATION_MS,
+  shouldAnimateColorSchemeChange,
+} from '@shared/color-scheme';
 import { syncThemeColorsToMain } from '@ui/utils/theme-color-sync';
 
 const THEME_TRANSITION_CLASS = 'theme-transitions-enabled';
 const THEME_TRANSITION_DURATION_MS = 500;
 const THEME_TRANSITION_HALF_DURATION_MS = THEME_TRANSITION_DURATION_MS / 2;
+
+const SCHEME_TRANSITION_CLASS = COLOR_SCHEME_TRANSITION_CLASS;
+const SCHEME_TRANSITION_DURATION_MS = COLOR_SCHEME_TRANSITION_DURATION_MS;
+
+let schemeTransitionTimeoutId: number | undefined;
+
+function clearSchemeTransitionTimeout() {
+  if (schemeTransitionTimeoutId !== undefined) {
+    window.clearTimeout(schemeTransitionTimeoutId);
+    schemeTransitionTimeoutId = undefined;
+  }
+}
 
 type PersonalizationThemeId = Parameters<typeof getPersonalizationTheme>[0];
 type PersonalizationTheme = ReturnType<typeof getPersonalizationTheme>;
@@ -91,15 +108,48 @@ export function applyPersonalizationThemeToRoot(
 export function PersonalizationThemeSyncer() {
   const themeId = useKartonState((s) => s.globalConfig.personalizationThemeId);
   const systemTheme = useKartonState((s) => s.systemTheme);
+  const previousSystemThemeRef = useRef<'light' | 'dark' | undefined>(
+    undefined,
+  );
 
   useLayoutEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return;
     }
 
-    document.documentElement.classList.toggle('dark', systemTheme === 'dark');
+    const root = document.documentElement;
+    const previous = previousSystemThemeRef.current;
+    const changed = shouldAnimateColorSchemeChange(previous, systemTheme);
+    previousSystemThemeRef.current = systemTheme;
+
+    if (changed) {
+      // 使用 View Transitions 圆形扩散时，颜色由快照动画接管；
+      // 此时不能再叠加 CSS 颜色过渡，否则扩散边缘会出现颜色拖影。
+      const viewTransitionActive =
+        root.dataset.colorSchemeViewTransition === 'true';
+      if (!viewTransitionActive) {
+        // 先挂上过渡 class 并强制一次样式计算，再切换 dark class，
+        // 否则同一帧内完成两件事可能导致过渡不生效。
+        root.classList.add(SCHEME_TRANSITION_CLASS);
+        void root.offsetWidth;
+        clearSchemeTransitionTimeout();
+        schemeTransitionTimeoutId = window.setTimeout(() => {
+          root.classList.remove(SCHEME_TRANSITION_CLASS);
+          schemeTransitionTimeoutId = undefined;
+        }, SCHEME_TRANSITION_DURATION_MS);
+      }
+    }
+
+    root.classList.toggle('dark', systemTheme === 'dark');
     window.requestAnimationFrame(syncThemeColorsToMain);
   }, [systemTheme]);
+
+  useEffect(() => {
+    return () => {
+      clearSchemeTransitionTimeout();
+      document.documentElement.classList.remove(SCHEME_TRANSITION_CLASS);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     applyPersonalizationThemeToRoot(themeId);

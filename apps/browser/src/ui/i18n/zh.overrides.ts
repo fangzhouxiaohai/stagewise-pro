@@ -88,4 +88,8 @@ export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
   'Search agents...': '搜索智能体…',
   'Connect workspace': '连接工作区',
   'New agent': '新建智能体',
+
+  // 明暗主题切换
+  'Switch to dark mode': '切换到暗黑模式',
+  'Switch to light mode': '切换到浅色模式',
 };

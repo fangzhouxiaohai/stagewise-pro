@@ -220,6 +220,9 @@ export function createUiTranslator(
         document.addEventListener('click', handleInteraction, true);
         document.addEventListener('keydown', handleInteraction, true);
         document.addEventListener('focusin', handleInteraction, true);
+        // 悬浮提示（Tooltip）是悬停时才挂载到 portal 的文本，补一个指针
+        // 移入触发，保证新按钮的提示也能翻译。
+        document.addEventListener('pointerover', handleInteraction, true);
       }
     },
     stop() {
@@ -237,6 +240,7 @@ export function createUiTranslator(
         document.removeEventListener('click', handleInteraction, true);
         document.removeEventListener('keydown', handleInteraction, true);
         document.removeEventListener('focusin', handleInteraction, true);
+        document.removeEventListener('pointerover', handleInteraction, true);
       }
       restoreAll();
     },
