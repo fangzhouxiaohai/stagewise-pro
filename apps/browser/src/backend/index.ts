@@ -34,11 +34,22 @@ if (process.platform === 'win32') {
   );
 }
 app.applicationMenu = null;
+app.setAboutPanelOptions({
+  applicationName: __APP_NAME__,
+  applicationVersion: app.getVersion(),
+});
 installStartupOpenUrlListener();
 
 // Set the right path structure for the app
-// We keep userData where it is, but we will put session data into a sub-folder called "session"
-app.setPath('userData', path.join(app.getPath('appData'), __APP_BASE_NAME__));
+// 品牌更名为 stagewise pro 后仍沿用历史数据目录，避免升级后丢失会话、
+// 设置与技能。安装目录由 __APP_BASE_NAME__ 决定，与用户数据目录无关。
+const userDataBaseName =
+  __APP_RELEASE_CHANNEL__ === 'release'
+    ? 'stagewise'
+    : __APP_RELEASE_CHANNEL__ === 'nightly'
+      ? 'stagewise-nightly'
+      : __APP_BASE_NAME__;
+app.setPath('userData', path.join(app.getPath('appData'), userDataBaseName));
 app.setPath('sessionData', path.join(app.getPath('userData'), 'session'));
 
 // Register custom protocols as privileged (must happen before app.ready)

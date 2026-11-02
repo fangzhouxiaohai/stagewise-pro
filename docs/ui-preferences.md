@@ -60,14 +60,15 @@
   `src/shared/color-scheme.ts` 提供 `isDarkColorScheme` / `resolveNextColorScheme`
   纯函数并配有单测；`nativeTheme.themeSource` 更新后，UI 的 `systemTheme`
   状态驱动根节点 `dark` class。
-- 切换过渡：使用 View Transitions API 做圆形扩散——以按钮中心为圆心，
-  新主题从左下角以弧形向右上角扩展覆盖整个视口，480ms、
-  `cubic-bezier(0.16, 1, 0.3, 1)`；点击后根节点先切换 `dark`，
-  再由 `::view-transition-new(root)` 的 `clip-path` 动画完成揭示。
-  不支持 View Transitions 或系统开启“减少动态效果”时，降级为 220ms 颜色淡入。
-- 实现：`src/ui/utils/color-scheme-transition.ts`（半径计算 + 过渡播放，
-  含单测）；`PersonalizationThemeSyncer` 在扩散期间跳过 CSS 颜色过渡，
-  避免边缘拖影；`browser-base.css` 中关闭默认交叉淡入并设置层级。
+- 切换过渡：使用 View Transitions API 做圆形扩散/回缩，以按钮中心为圆心：
+  - 切到暗色：新暗色主题从左下角向右上角扩散（720ms，ease-out 曲线）；
+  - 切到浅色：旧暗色主题从右上角向左下角回缩（720ms，ease-in-out 曲线）；
+  - 边缘叠加一层流光：柔和光晕 + 旋转的锥形高光，跟随圆弧边缘移动；
+  - 不支持 View Transitions 或系统开启“减少动态效果”时，降级为 220ms 颜色淡入。
+- 实现：`src/ui/utils/color-scheme-transition.ts`（半径计算、方向判定、
+  过渡播放与流光覆盖层，含单测）；`PersonalizationThemeSyncer` 在动画期间
+  跳过 CSS 颜色过渡，避免边缘拖影；`browser-base.css` 中关闭默认交叉淡入、
+  设置新旧快照层级并定义 `.theme-reveal-glow`。
 - 悬浮提示文案已加入中英词典（“Switch to dark mode”/“切换到暗黑模式”）。
 
 ## 三、默认工具审批模式（默认 Always allow）
@@ -145,8 +146,8 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装包：`stagewise-1.31.15-x64-setup.exe`（205,884,416 字节，
-  SHA256 `5CE676F1196CB090C673121E51822E08388AA0548975C76F232BF688798C995A`，
+- 安装包：`stagewise-pro-1.31.18-x64-setup.exe`（205,885,952 字节，
+  SHA256 `A7E43DB0B202D90EAD55B1C73F3D8CD546ECD37CD48B7AF1138FE40C02EF0228`，
   release 渠道，覆盖安装保留用户数据）。
 - 验证方式：安装后启动应用，通过 Chrome DevTools Protocol 截图设置页，确认：
   - 设置页导航与内容为中文；

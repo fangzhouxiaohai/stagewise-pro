@@ -35,7 +35,7 @@ const packageJson = JSON.parse(
 export const __APP_BASE_NAME__ = (() => {
   switch (__APP_RELEASE_CHANNEL__) {
     case 'release':
-      return 'stagewise';
+      return 'stagewise-pro';
     case 'nightly':
       return 'stagewise-nightly';
     case 'dev':
@@ -48,7 +48,7 @@ export const __APP_BASE_NAME__ = (() => {
 export const __APP_NAME__ = (() => {
   switch (__APP_RELEASE_CHANNEL__) {
     case 'release':
-      return 'stagewise';
+      return 'stagewise pro';
     case 'nightly':
       return 'stagewise Nightly';
     case 'dev':

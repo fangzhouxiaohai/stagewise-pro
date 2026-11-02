@@ -2,100 +2,93 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-combo-dark.svg">
-  <img src=".github/assets/logo-combo.svg" alt="stagewise" height="60" />
+  <img src=".github/assets/logo-combo.svg" alt="stagewise pro" height="60" />
 </picture>
 
-<h3>The Agentic IDE for Open-Source Models</h3>
+<h3>stagewise pro · 本地增强版智能体 IDE</h3>
 
-<p>
-  <a href="./locales/README.zh-CN.md">简体中文</a> ·
-  <a href="./locales/README.de.md">Deutsch</a> ·
-  <a href="./locales/README.ja.md">日本語</a> ·
-  <a href="./locales/README.es.md">Español</a> ·
-  <a href="./locales/README.ko.md">한국어</a> ·
-  <a href="./locales/README.pt.md">Português</a> ·
-  <a href="./locales/README.fr.md">Français</a> ·
-  <a href="./locales/README.it.md">Italiano</a> ·
-  <a href="./locales/README.hi.md">हिन्दी</a> ·
-  <a href="./locales/README.ru.md">Русский</a> ·
-  <a href="./locales/README.uk.md">Українська</a>
-</p>
-
-<p>
-  <a href="https://github.com/stagewise-io/stagewise/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/npm/l/stagewise" /></a>
-  <a href="https://github.com/stagewise-io/stagewise/stargazers"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/stagewise-io/stagewise" /></a>
-  <a href="https://discord.gg/gkdGsDYaKA"><img alt="Discord" src="https://img.shields.io/discord/1229378372141056010?label=Discord&logo=discord&logoColor=white" /></a>
-  <a href="https://x.com/stagewise_io"><img alt="X Follow" src="https://img.shields.io/twitter/follow/stagewise_io" /></a>
-</p>
+<p>基于 stagewise 的本地增强分支，重点补齐中文体验、上下文压缩与日常使用细节。</p>
 
 </div>
 
-![stagewise demo](apps/website/src/app/%28home%29/_components/feature-images/full-demo-dark.webp)
-
-<br />
-
 ---
 
-## About the project
+## 本仓库改动（相对上游）
 
-**stagewise** is an open source agentic IDE for developers with a coding agent built right in.
+### 品牌与界面
 
-- **Browse and build** in the same tool — no context switching
-- **Work with a coding agent** that has **full access to your tab's console and debugger**
-- **Make temporary test changes** or **connect a codebase** for permanent edits
-- **Reverse-engineer** any website's components, style systems, and color palettes
-- **IDE integration** to view and apply code changes in your favorite editor
-- **Bring your own API key** — fully supported for all AI providers
-- **Compact context on demand** — run `/compact` in the chat input, or let sessions auto-compact at 80% of the context window (Settings → Agent → General). See [docs/context-compaction.md](docs/context-compaction.md)
-- **Chinese-first interface** — switch between Simplified Chinese and English, pick one of five text sizes, set a default tool-approval mode, and add global instructions for every chat (Settings → Agent → General). See [docs/ui-preferences.md](docs/ui-preferences.md)
-- **Light and dark themes** — toggle from the sidebar footer; the new theme sweeps in as a circular reveal from the button, with a reduced-motion fallback
+- 程序名称改为 **stagewise pro**：窗口标题、任务栏名称、安装器、原生应用菜单同步更新。
+- 默认 **简体中文**，可在设置 → 智能体 → 常规中切换 English；页面文案、原生应用菜单、
+  网页右键菜单均跟随切换，无需重启。
+- 文字大小支持 **S / M / L / XL / XXL** 五档，整体界面随根字号缩放。
+- 左侧栏底部新增明暗主题快捷按钮：
+  - 切换到暗色：新主题从左下角按钮位置以圆形方式向右上角扩散；
+  - 切换到浅色：旧暗色主题从右上角向左下角回缩，露出浅色主题；
+  - 扩散/回缩边缘带流光高光，时长 680ms；
+  - 遵循系统“减少动态效果”设置，不支持 View Transitions 时退化为颜色淡入。
 
-## Getting Started
+### 上下文与压缩
 
-Download stagewise from [stagewise.io](https://ade.stagewise.io) and follow the short onboarding guide.
+- 对话输入框支持 `/compact` 斜杠命令，手动压缩上下文。
+- 设置 → 智能体 → 常规新增“自动压缩上下文”（默认开启）：会话达到模型上下文窗口
+  80% 时自动总结历史，压缩完成后继续当前任务，不中断执行。
+- 压缩过程在对话内显示动画与结果，失败时显示原因。
+- 模型选择器旁显示上下文占用百分比与最近生成速度（例如 `42% · 18 tok/s`），
+  可在设置中关闭。
 
-## Use your coding subscription
+### 审批与提示词
 
-Bring Your Own Key for all popular model providers — you can also register completely custom providers (including local inference!) and define custom models.
+- 默认工具审批模式可在设置中配置（默认“始终允许”），新会话自动生效；
+  已有会话保留各自的审批模式，输入框仍可临时切换。
+- 设置 → 智能体 → 常规新增“全局提示词”：保存后追加到每个原生会话的
+  `<global-user-instructions>` 段，对下一步生效。
 
-### Easy Import — use your existing subscription
+### 兼容与数据
 
-Connect any of the following subscriptions with a single API key to unlock all models the provider offers directly inside stagewise.
+- 品牌更名后仍沿用原用户数据目录（Windows 下为 `%APPDATA%\stagewise`），
+  升级不会丢失会话、设置、技能与模型配置。
+- 安装目录为 `%LOCALAPPDATA%\stagewise-pro`，与旧版本可并存。
+- 外部 ACP 代理（Claude Code、Codex、OpenCode 等）的提示词与输出由其自身管理，
+  不受全局提示词与界面翻译影响。
+- 系统文件选择框、系统弹窗按钮等由操作系统控制，不随应用语言切换。
 
-| Subscription | Provider | Featured Models | Dashboard |
-| ---------------- | ------------ | ------------------- | ------------- |
-| Kimi             | [Moonshot AI](https://platform.moonshot.ai) | Kimi K3, Kimi K2.7 Code, Kimi K2.6, Kimi K2.5 | [Get API key](https://platform.moonshot.ai/console/api-keys) |
-| Qwen Coding Plan | [Alibaba DashScope](https://dashscope.console.aliyun.com) | Qwen 3-Coder 30B-A3B, Qwen 3-32B | [Get API key](https://dashscope.console.aliyun.com/apiKey) |
-| MiniMax          | [MiniMax](https://platform.minimax.io) | MiniMax M3, MiniMax M2.7 | [Get API key](https://platform.minimax.io/user-center/basic-information/interface-key) |
-| Xiaomi MiMo      | [Xiaomi MiMo](https://platform.xiaomimimo.com) | MiMo-V2.5-Pro, MiMo-V2.5               | [Get API key](https://platform.xiaomimimo.com/#/console/plan-manage) |
-| Mistral          | [Mistral](https://console.mistral.ai) | Mistral Medium 3.5, Mistral Large 3, Mistral Small 4, Codestral | [Get API key](https://console.mistral.ai/api-keys) |
+## 安装
 
-### Bring Your Own API Key
+本地构建的 Windows 安装包位于：
 
-Connect directly to any of the following API providers with your own key. For maximum flexibility, [OpenRouter](https://openrouter.ai) gives you access to 345+ models from all major vendors through a single API key.
+```text
+apps/browser/out/release/make/squirrel.windows/stagewise-pro-<版本>-x64-setup.exe
+```
 
-| Provider | Featured Models | Dashboard |
-| ------------- | ------------------- | ------------- |
-| OpenRouter    | Claude Opus 4.8, GPT-6.1 Sol, Gemini 3.1 Pro, DeepSeek V4 Pro | [Get API key](https://openrouter.ai/keys) |
+覆盖安装即可保留用户数据；安装完成后从开始菜单或桌面快捷方式启动 stagewise pro。
 
-### stagewise Account (sunset)
+## 开发
 
-> [!NOTE]
-> The stagewise account service will be sunset at the end of November 2026. To keep using stagewise, bring your own subscription or API keys instead — see the options above.
+```bash
+pnpm install
+pnpm dev
+pnpm check
+pnpm test
+```
 
-## License
+构建 Windows 安装包：
 
-stagewise is developed by stagewise GmbH and offered under the AGPLv3 license.
+```bash
+cd apps/browser
+$env:RELEASE_CHANNEL="release"
+$env:APP_VERSION_OVERRIDE="1.31.18"
+$env:BUILD_MODE="production"
+pnpm make --arch=x64
+```
 
-For more information on the license model, visit the [FAQ about the GNU Licenses](https://www.gnu.org/licenses/gpl-faq.html).
+## 文档
 
-For use cases that fall outside the scope permitted by the AGPLv3 license, feel free to [contact us](mailto:sales@stagewise.io).
+- [上下文压缩说明](docs/context-compaction.md)
+- [界面偏好、原生菜单、明暗主题与全局提示词](docs/ui-preferences.md)
 
-## Issues
+## 许可与致谢
 
-Feel free to [open an issue](https://github.com/stagewise-io/stagewise/issues/new) if you found a bug or have a fresh idea.
-
-## Community & Support
-
-- [Join our Discord](https://discord.gg/gkdGsDYaKA)
-- Open an [issue on GitHub](https://github.com/stagewise-io/stagewise/issues/new) for dev support.
+本项目基于 [stagewise](https://github.com/stagewise-io/stagewise) 修改，
+遵循 AGPLv3 许可。上游版权归 stagewise GmbH 所有；本仓库的本地增强改动
+（中文本地化、文字尺寸、默认审批、全局提示词、上下文压缩交互、明暗主题动效、
+stagewise pro 品牌）由本仓库维护者提供。

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { getCircleRevealRadius } from './color-scheme-transition';
+import {
+  getCircleRevealRadius,
+  resolveColorSchemeRevealDirection,
+} from './color-scheme-transition';
 
 describe('getCircleRevealRadius', () => {
   it('从左下角扩散时覆盖到右上角', () => {
@@ -21,5 +24,10 @@ describe('getCircleRevealRadius', () => {
       Math.hypot(1200, 800),
       5,
     );
+  });
+
+  it('切到暗色为扩散，切到浅色为回缩', () => {
+    expect(resolveColorSchemeRevealDirection(true)).toBe('expand');
+    expect(resolveColorSchemeRevealDirection(false)).toBe('retract');
   });
 });

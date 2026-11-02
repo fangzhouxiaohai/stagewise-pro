@@ -114,6 +114,7 @@ export function SidebarAuthFooter() {
           x: rect.left + rect.width / 2,
           y: rect.top + rect.height / 2,
         },
+        nextIsDark: nextScheme === 'dark',
         apply,
       });
 

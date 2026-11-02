@@ -87,19 +87,79 @@
     transition-timing-function: ease-out;
   }
 
-  /* View Transitions：关闭默认交叉淡入，改由 JS 播放圆形扩散 */
+  /* View Transitions：关闭默认交叉淡入，改由 JS 播放圆形扩散/回缩 */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
   }
 
-  ::view-transition-old(root) {
+  :root.theme-reveal-expand::view-transition-old(root) {
     z-index: 1;
   }
 
-  ::view-transition-new(root) {
+  :root.theme-reveal-expand::view-transition-new(root) {
     z-index: 2;
+  }
+
+  :root.theme-reveal-retract::view-transition-old(root) {
+    z-index: 2;
+  }
+
+  :root.theme-reveal-retract::view-transition-new(root) {
+    z-index: 1;
+  }
+
+  /* 明暗切换边缘的流光：一层柔和光晕 + 一层旋转高光 */
+  .theme-reveal-glow {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(
+      circle var(--theme-reveal-radius, 0px) at var(--theme-reveal-x, 50%)
+        var(--theme-reveal-y, 50%),
+      transparent calc(var(--theme-reveal-radius, 0px) - 170px),
+      color-mix(in oklab, var(--color-primary-500) 28%, transparent)
+        calc(var(--theme-reveal-radius, 0px) - 70px),
+      color-mix(in oklab, var(--color-primary-300) 58%, transparent)
+        calc(var(--theme-reveal-radius, 0px) - 18px),
+      rgba(255, 255, 255, 0.96) calc(var(--theme-reveal-radius, 0px) - 3px),
+      transparent var(--theme-reveal-radius, 0px)
+    );
+    mix-blend-mode: plus-lighter;
+    will-change: opacity;
+  }
+
+  .theme-reveal-glow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(
+      from var(--theme-reveal-angle, 0deg) at var(--theme-reveal-x, 50%)
+        var(--theme-reveal-y, 50%),
+      transparent 0deg,
+      transparent 42deg,
+      rgba(255, 255, 255, 0.42) 60deg,
+      color-mix(in oklab, var(--color-primary-300) 62%, transparent) 76deg,
+      transparent 96deg,
+      transparent 360deg
+    );
+    -webkit-mask-image: radial-gradient(
+      circle var(--theme-reveal-radius, 0px) at var(--theme-reveal-x, 50%)
+        var(--theme-reveal-y, 50%),
+      transparent calc(var(--theme-reveal-radius, 0px) - 30px),
+      #000 calc(var(--theme-reveal-radius, 0px) - 12px),
+      transparent var(--theme-reveal-radius, 0px)
+    );
+    mask-image: radial-gradient(
+      circle var(--theme-reveal-radius, 0px) at var(--theme-reveal-x, 50%)
+        var(--theme-reveal-y, 50%),
+      transparent calc(var(--theme-reveal-radius, 0px) - 30px),
+      #000 calc(var(--theme-reveal-radius, 0px) - 12px),
+      transparent var(--theme-reveal-radius, 0px)
+    );
   }
 
   @media (prefers-reduced-motion: reduce) {
