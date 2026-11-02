@@ -109,6 +109,7 @@ import {
 } from '@stagewise/icons';
 import { extractTipTapText, firstWords } from '@ui/utils/text-utils';
 import { cn } from '@ui/utils';
+import { translateUiString } from '@ui/i18n/dictionary';
 import { useEmptyAgentId } from '@ui/hooks/use-empty-agent';
 import { useTrack } from '@ui/hooks/use-track';
 import { AgentCard, AgentCardSkeleton } from './_components/agent-card';
@@ -722,6 +723,12 @@ export function AgentsList() {
   );
   const agentListGroupingMode = useKartonState(
     (s) => s.preferences.sidebar.agentListGroupingMode,
+  );
+  const uiLanguage = useKartonState((s) => s.preferences.general.language);
+  const localizeGroupLabel = useCallback(
+    (label: GroupLabel) =>
+      uiLanguage === 'zh-CN' ? translateUiString(label) : label,
+    [uiLanguage],
   );
   const workspaceGroupOrder = useKartonState(
     useComparingSelector((s) => s.preferences.sidebar.workspaceGroupOrder),
@@ -2590,7 +2597,7 @@ export function AgentsList() {
                   key={`h-${item.label}`}
                   className="shrink-0 px-1.5 pt-3 pb-1 font-normal text-sidebar-foreground text-xs"
                 >
-                  {item.label}
+                  {localizeGroupLabel(item.label)}
                 </div>
               );
             }

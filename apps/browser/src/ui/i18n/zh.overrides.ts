@@ -75,6 +75,8 @@ export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
   // 侧栏、文件树与输入框占位
   'Use / to plan and run commands. Use @ for context.':
     '输入 / 运行命令，输入 @ 添加上下文。',
+  'Use / to plan and run commands. Use @ for context. Press ↵ to send now':
+    '输入 / 运行命令，输入 @ 添加上下文。按 ↵ 立即发送',
   'Group by Age': '按时间分组',
   'Group by Workspace': '按工作区分组',
   'Group by workspace': '按工作区分组',
@@ -88,6 +90,13 @@ export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
   'Search agents...': '搜索智能体…',
   'Connect workspace': '连接工作区',
   'New agent': '新建智能体',
+
+  // 侧栏日期分组
+  Today: '今天',
+  Yesterday: '昨天',
+  'Last 7 days': '最近 7 天',
+  'Last 30 days': '最近 30 天',
+  Older: '更早',
 
   // 明暗主题切换
   'Switch to dark mode': '切换到暗黑模式',

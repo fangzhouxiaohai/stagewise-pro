@@ -52,6 +52,8 @@ import {
 } from './rich-text/slash';
 import type { SkillDefinitionUI } from '@shared/skills';
 import { useState, memo } from 'react';
+import { useKartonState } from '@ui/hooks/use-karton';
+import { translateUiString } from '@ui/i18n/dictionary';
 import { useIsContainerScrollable } from '@ui/hooks/use-is-container-scrollable';
 import {
   dispatchChatHistoryScroll,
@@ -357,11 +359,15 @@ export const ChatInput = memo(function ChatInput({
   ref,
 }: ChatInputProps) {
   const shownPlaceholder = useRef('');
+  const uiLanguage = useKartonState((s) => s.preferences.general.language);
   useEffect(() => {
-    shownPlaceholder.current =
+    const basePlaceholder =
       placeholder ??
       `Use / to plan and run commands. Use @ for context. ${hasQueuedMessages ? 'Press ↵ to send now' : ''}`;
-  }, [placeholder, hasQueuedMessages]);
+    const normalized = basePlaceholder.trim();
+    shownPlaceholder.current =
+      uiLanguage === 'zh-CN' ? translateUiString(normalized) : basePlaceholder;
+  }, [placeholder, hasQueuedMessages, uiLanguage]);
   const staticPlaceholderRef = useRef(() => shownPlaceholder.current);
 
   const [textContent, setTextContent] = useState<string>('');

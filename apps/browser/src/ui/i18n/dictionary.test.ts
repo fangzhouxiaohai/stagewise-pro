@@ -20,6 +20,25 @@ describe('translateUiString', () => {
     );
   });
 
+  it('侧栏日期分组标签翻译', () => {
+    expect(translateUiString('Today')).toBe('今天');
+    expect(translateUiString('Yesterday')).toBe('昨天');
+    expect(translateUiString('Last 7 days')).toBe('最近 7 天');
+    expect(translateUiString('Last 30 days')).toBe('最近 30 天');
+    expect(translateUiString('Older')).toBe('更早');
+  });
+
+  it('输入框占位符翻译', () => {
+    expect(
+      translateUiString('Use / to plan and run commands. Use @ for context.'),
+    ).toBe('输入 / 运行命令，输入 @ 添加上下文。');
+    expect(
+      translateUiString(
+        'Use / to plan and run commands. Use @ for context. Press ↵ to send now',
+      ),
+    ).toBe('输入 / 运行命令，输入 @ 添加上下文。按 ↵ 立即发送');
+  });
+
   it('未命中词典时返回原文', () => {
     expect(translateUiString('A completely unknown string')).toBe(
       'A completely unknown string',

@@ -47,20 +47,29 @@
 
 - 品牌更名后仍沿用原用户数据目录（Windows 下为 `%APPDATA%\stagewise`），
   升级不会丢失会话、设置、技能与模型配置。
-- 安装目录为 `%LOCALAPPDATA%\stagewise-pro`，与旧版本可并存。
+- 程序安装到 `E:\softs\stagewise-pro`，不写入 C 盘；详见
+  [安装说明](docs/installation.md)。
 - 外部 ACP 代理（Claude Code、Codex、OpenCode 等）的提示词与输出由其自身管理，
   不受全局提示词与界面翻译影响。
 - 系统文件选择框、系统弹窗按钮等由操作系统控制，不随应用语言切换。
 
 ## 安装
 
-本地构建的 Windows 安装包位于：
+程序本体固定安装到 **E 盘**：
 
 ```text
-apps/browser/out/release/make/squirrel.windows/stagewise-pro-<版本>-x64-setup.exe
+E:\softs\stagewise-pro
 ```
 
-覆盖安装即可保留用户数据；安装完成后从开始菜单或桌面快捷方式启动 stagewise pro。
+构建打包产物后运行：
+
+```powershell
+pwsh -File scripts/install-portable.ps1
+```
+
+脚本会复制程序到 `E:\softs\stagewise-pro` 并创建开始菜单、桌面快捷方式，
+不会修改 C 盘安装目录，也不会删除 `%APPDATA%\stagewise` 中的用户数据。
+完整说明见 [docs/installation.md](docs/installation.md)。
 
 ## 开发
 
@@ -76,7 +85,7 @@ pnpm test
 ```bash
 cd apps/browser
 $env:RELEASE_CHANNEL="release"
-$env:APP_VERSION_OVERRIDE="1.31.18"
+$env:APP_VERSION_OVERRIDE="1.31.20"
 $env:BUILD_MODE="production"
 pnpm make --arch=x64
 ```

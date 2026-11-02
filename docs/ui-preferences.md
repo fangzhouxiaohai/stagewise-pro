@@ -146,12 +146,15 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装包：`stagewise-pro-1.31.18-x64-setup.exe`（205,885,952 字节，
-  SHA256 `A7E43DB0B202D90EAD55B1C73F3D8CD546ECD37CD48B7AF1138FE40C02EF0228`，
-  release 渠道，覆盖安装保留用户数据）。
+- 安装位置：`E:\softs\stagewise-pro`（便携目录 + 快捷方式，不写入 C 盘）。
+  构建产物位于 `apps/browser/out/release/stagewise-pro-win32-x64`，执行
+  `pwsh -File scripts/install-portable.ps1` 完成复制与快捷方式创建。
+  详见 [installation.md](installation.md)。
+- 用户数据仍位于 `%APPDATA%\stagewise`，覆盖安装不会丢失会话与设置。
 - 验证方式：安装后启动应用，通过 Chrome DevTools Protocol 截图设置页，确认：
   - 设置页导航与内容为中文；
   - 界面语言、文字大小、默认工具审批、全局提示词、自动压缩、上下文/速度显示
     六项设置均存在且可操作；
   - 默认工具审批显示“始终允许”，文字大小显示“M”，界面语言显示“简体中文”；
-  - 中文模式下渲染进程 CPU 保持低位、CDP 可正常响应（无反馈环）。
+  - 中文模式下渲染进程 CPU 保持低位、CDP 可正常响应（无反馈环）；
+  - 侧栏日期分组显示“今天 / 昨天”，聊天输入框占位符为中文。
