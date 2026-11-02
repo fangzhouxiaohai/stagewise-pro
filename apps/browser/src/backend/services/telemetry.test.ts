@@ -3,11 +3,16 @@ import type {
   KartonContract,
   OnboardingCompletionSummary,
 } from '@shared/karton-contracts/ui';
+import { defaultUserPreferences } from '@shared/karton-contracts/ui/shared-types';
 import type { AuthHandoffProvider } from '@shared/karton-contracts/ui/telemetry';
+import type { IdentifierService } from './identifier';
+import type { Logger } from './logger';
+import type { PreferencesService } from './preferences';
 import {
   type BackendEventProperties,
   isUIEventName,
   parseUIEventProperties,
+  TelemetryService,
 } from './telemetry';
 
 type Assert<T extends true> = T;
@@ -515,5 +520,60 @@ describe('auth UI telemetry schemas', () => {
         error_kind: 'backend-error',
       }),
     ).toBeNull();
+  });
+});
+
+/**
+ * 未注入 PostHog 项目密钥的本地构建（例如直接执行 electron-forge make）
+ * 也必须能正常启动：posthog-node 会在构造时校验密钥，空密钥会抛出
+ * "You must pass your PostHog project's api key"，导致主进程启动中断。
+ */
+describe('TelemetryService without a PostHog key', () => {
+  function createService(apiKey: string | undefined): TelemetryService {
+    const original = process.env.POSTHOG_API_KEY;
+    if (apiKey === undefined) {
+      delete process.env.POSTHOG_API_KEY;
+    } else {
+      process.env.POSTHOG_API_KEY = apiKey;
+    }
+
+    try {
+      const identifierService = {
+        getMachineId: () => 'machine-id-test',
+      } as unknown as IdentifierService;
+      const preferencesService = {
+        get: () => structuredClone(defaultUserPreferences),
+        addListener: () => () => undefined,
+      } as unknown as PreferencesService;
+      const logger = {
+        debug: () => undefined,
+        info: () => undefined,
+        warn: () => undefined,
+        error: () => undefined,
+        isDebugEnabled: false,
+      } as unknown as Logger;
+
+      return new TelemetryService(
+        identifierService,
+        preferencesService,
+        logger,
+      );
+    } finally {
+      if (original === undefined) delete process.env.POSTHOG_API_KEY;
+      else process.env.POSTHOG_API_KEY = original;
+    }
+  }
+
+  it('does not throw when the API key is missing', () => {
+    expect(() => createService(undefined)).not.toThrow();
+  });
+
+  it('does not throw when the API key is an empty string', () => {
+    expect(() => createService('')).not.toThrow();
+  });
+
+  it('still creates a usable client when a key is configured', () => {
+    const service = createService('phc_test_key');
+    expect(service.posthogClient).toBeDefined();
   });
 });

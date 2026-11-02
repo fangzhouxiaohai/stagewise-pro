@@ -902,12 +902,24 @@ export class TelemetryService extends DisposableService {
     this.preferencesService = preferencesService;
     this.logger = logger;
     const apiKey = process.env.POSTHOG_API_KEY ?? '';
-    this.posthogClient = new PostHog(apiKey, {
-      host: process.env.POSTHOG_HOST || 'https://eu.i.posthog.com',
-      flushAt: 1,
-      flushInterval: 0,
-      disabled: !apiKey,
-    });
+    if (!apiKey) {
+      this.logger.warn(
+        '[TelemetryService] POSTHOG_API_KEY is not set — telemetry is disabled for this build.',
+      );
+    }
+    // posthog-node 会在构造时校验密钥非空，空密钥会抛出
+    // "You must pass your PostHog project's api key" 并中断主进程启动。
+    // 未注入密钥的本地构建使用占位密钥并保持 disabled，保证应用可用；
+    // 正式构建始终注入真实密钥，行为不变。
+    this.posthogClient = new PostHog(
+      apiKey || 'phc_local_build_telemetry_disabled',
+      {
+        host: process.env.POSTHOG_HOST || 'https://eu.i.posthog.com',
+        flushAt: 1,
+        flushInterval: 0,
+        disabled: !apiKey,
+      },
+    );
 
     this.identifyUser();
 

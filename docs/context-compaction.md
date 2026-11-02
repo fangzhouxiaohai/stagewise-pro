@@ -73,6 +73,7 @@
 ```bash
 pnpm -F @stagewise/agent-core exec vitest run src/agents/shared/auto-compaction.test.ts
 pnpm -F stagewise exec vitest run "<slash provider 测试>" "<偏好 schema 测试>"
+pnpm -F stagewise exec vitest run src/backend/services/telemetry.test.ts  # 含 3 项空密钥启动用例
 pnpm -F @stagewise/agent-core test      # 639 项通过；3 项因 Windows 无 symlink 权限失败（与本改动无关）
 pnpm -F stagewise test                  # 1174 项通过；2 项因 Windows 无 symlink 权限失败（与本改动无关）
 pnpm -F stagewise typecheck             # ui / backend / preload / storybook 全部通过
@@ -84,7 +85,7 @@ Windows 安装包：
 ```powershell
 $env:PATH = "C:\Users\A\AppData\Roaming\npm;" + $env:PATH
 $env:RELEASE_CHANNEL = 'release'
-$env:APP_VERSION_OVERRIDE = '1.31.1'
+$env:APP_VERSION_OVERRIDE = '1.31.2'
 $env:BUILD_MODE = 'production'
 Push-Location apps/browser
 pnpm make --arch=x64
@@ -92,18 +93,45 @@ Pop-Location
 ```
 
 - 采用 `release` 渠道：沿用已有的 `%APPDATA%\stagewise` 用户数据与安装目录。
-- 版本使用 `APP_VERSION_OVERRIDE=1.31.1`：本机已安装 1.31.0，覆盖安装需要更高版本号，
+- 版本使用 `APP_VERSION_OVERRIDE`：本机原安装 1.31.0，覆盖安装需要更高版本号，
   避免 Squirrel 拒绝降级；不修改仓库中的 `package.json` 版本。
-- 产物（`apps/browser/out/release/make/squirrel.windows/`）：
-  - `stagewise-1.31.1-x64-setup.exe`（205 MB，SHA256 `5FAD0EE2454DED7FFF9044B7DE1D84D8A36F4FB7C87B26F495C9285E2B1D6BC3`）
-  - `stagewise-1.31.1-x64-full.nupkg`、`RELEASES-win32-x64`（自动更新用）
-- ZIP 产物名 `stagewise-win32-x64-1.30.2.zip` 中的版本号取自仓库 `package.json`，
-  与实际安装版本不一致；Squirrel 安装包名称与版本信息均为 1.31.1。
+- 最终可用产物（`apps/browser/out/release/make/squirrel.windows/`）：
+  - `stagewise-1.31.2-x64-setup.exe`（205,825,536 字节，SHA256 `42B8D89F69443B20C4D376E1E9B23E025C3191A9DCDC3D8F843C552831E76426`）
+  - `stagewise-1.31.2-x64-full.nupkg`、`RELEASES-win32-x64`（自动更新用）
+- ZIP 产物名中的版本号取自仓库 `package.json`（1.30.2），与实际安装版本不一致；
+  Squirrel 安装包名称与版本信息均为 1.31.2。
 - 产物内已核对：`app.asar` 含 `command:compact`、`autoCompactContext`、`agents.compactHistory`、
-  `Auto-compact context`、`Context compressed` 等新增字符串；`resources/bundled/eslint-server`
-  与 `resources/bundled/acp` 均已打包。
+  `Auto-compact context`、`Context compressed`、`phc_local_build_telemetry_disabled` 等字符串；
+  `resources/bundled/eslint-server` 与 `resources/bundled/acp` 均已打包。
+- 本机已实际安装并启动验证：安装目录为 `%LOCALAPPDATA%\stagewise\app-1.31.2`，
+  主窗口正常打开，`window-state.json` 正常写入，未再出现启动崩溃弹窗。
 
-## 五、构建问题与处理记录
+## 五、安装失败排查记录
+
+### 5.1 现象一：`Installer has failed`（安装程序弹窗）
+
+- 日志位置：`%LOCALAPPDATA%\SquirrelTemp\Squirrel-Install.log`、`Squirrel-Install.1.log`。
+- 关键日志：`CreateUninstallerRegistryEntry` 报
+  `FileNotFoundException: ...\packages\stagewise-1.31.1-full.nupkg`；
+  `.1.log` 中同时出现 `Failed to remove existing directory ... app-1.31.1\squirrel.exe ... 访问被拒绝`。
+- 根因：首次安装因下载卸载图标（`raw.githubusercontent.com`）阻塞约 95 秒，
+  期间用户又多次双击安装包；后启动的实例执行“burning it to the ground”时删除了
+  先启动实例正在使用的 `packages` 目录，先启动实例随后在写入卸载注册表时找不到
+  nupkg 而失败。属于并发安装导致的互删，不是安装包结构问题。
+- 处理：结束所有 stagewise/Update/Setup 进程后，仅运行一次安装包并等待其完整结束；
+  安装成功（`packages\stagewise-1.31.2-full.nupkg`、`app.ico`、`stagewise.exe` 均正常生成）。
+
+### 5.2 现象二：安装完成后启动报 `Unhandled Promise Rejection`
+
+- 错误：`Error: You must pass your PostHog project's api key.`（`TelemetryService` 构造阶段）。
+- 根因：本地构建没有 `.env.prod`，`POSTHOG_API_KEY` 为空；
+  `posthog-node` 构造时校验密钥非空并抛错，导致主进程启动中断。
+- 修复：`apps/browser/src/backend/services/telemetry.ts` 在密钥缺失时记录警告，
+  使用占位密钥并保持 `disabled: true`，本地构建可正常启动且不会上报任何数据；
+  正式构建注入真实密钥，行为不变。新增 3 个单测覆盖空密钥场景。
+- 重建 1.31.2 安装包并在本机覆盖安装验证通过。
+
+## 六、构建问题与处理记录
 
 本次为本机首次构建，环境与 CI 存在差异，按“先复现、再定位、后修复”的顺序处理：
 
@@ -117,4 +145,5 @@ Pop-Location
 | vscode-eslint 源码中的 `client/src/shared`、`server/src/shared` 是符号链接，Windows 解压后变成 14 字节占位文件 | webpack 报 `Can't resolve './shared/settings'` | 将根目录 `$shared/*.ts` 复制到这两个目录后重新构建 |
 | Squirrel 打包失败：`CreateZipFromDirectory` 找不到可执行文件 | `electron-winstaller/vendor` 缺少 `7z.exe`（重装依赖后 postinstall 产物丢失） | 复制 `7z-x64.exe`/`7z-x64.dll` 为 `7z.exe`/`7z.dll` 后重新打包成功 |
 | 测试中 5 个用例因 `EPERM: symlink` 失败 | Windows 未开启开发者模式/无符号链接权限 | 与本改动无关，属既有环境限制：agent-core 3 个、browser 2 个，均为符号链接创建测试 |
+
 
