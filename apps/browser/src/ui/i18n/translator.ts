@@ -29,6 +29,8 @@ const SKIP_SELECTOR = [
 export interface UiTranslator {
   start: () => void;
   stop: () => void;
+  /** 立即同步扫描整个文档，供路由切换等布局阶段调用。 */
+  translateNow: () => void;
   isActive: () => boolean;
 }
 
@@ -245,6 +247,11 @@ export function createUiTranslator(
       restoreAll();
     },
     isActive: () => active,
+    translateNow() {
+      if (!active) return;
+      lastScanAt = Date.now();
+      walk(document.body);
+    },
   };
 }
 

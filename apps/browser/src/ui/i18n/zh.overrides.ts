@@ -98,6 +98,23 @@ export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
   'Last 30 days': '最近 30 天',
   Older: '更早',
 
+  // 设置页遗漏文案
+  'Clear last 24 hours': '清除最近 24 小时',
+  'Clear all time': '清除全部时间',
+  Clearing: '清除中',
+  'Clearing...': '清除中…',
+  'View All': '查看全部',
+  Collapse: '收起',
+  'Chats you archive will appear here.': '归档的对话会显示在这里。',
+  'No matching archived chats.': '没有匹配的归档对话。',
+  'Couldn’t load archived chats. Please try again.':
+    '加载归档对话失败，请重试。',
+  'Loading archived chats': '正在加载归档对话',
+  'Search archived chats': '搜索归档对话',
+  'Load more': '加载更多',
+  'Open the data folder for troubleshooting or reset stagewise to a clean setup.':
+    '打开数据文件夹以进行故障排除，或将 stagewise pro 重置为干净配置。',
+
   // 明暗主题切换
   'Switch to dark mode': '切换到暗黑模式',
   'Switch to light mode': '切换到浅色模式',

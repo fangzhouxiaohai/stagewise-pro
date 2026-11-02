@@ -11,7 +11,8 @@ import {
 import { Input } from '@stagewise/stage-ui/components/input';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import type { AgentHistoryEntry } from '@shared/karton-contracts/ui/agent';
-import { useKartonProcedure } from '@ui/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
+import { translateUiString } from '@ui/i18n/dictionary';
 import { getBaseName } from '@shared/path-utils';
 import { FolderIcon, Loader2Icon, SearchIcon, Trash2Icon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -19,6 +20,9 @@ import { useEffect, useRef, useState } from 'react';
 const ARCHIVED_PAGE_SIZE = 25;
 
 export function ArchivedAgentsSection() {
+  const uiLanguage = useKartonState((s) => s.preferences.general.language);
+  const localize = (text: string) =>
+    uiLanguage === 'en' ? text : translateUiString(text);
   const getArchivedAgents = useKartonProcedure(
     (p) => p.agents.getAgentsHistoryList,
   );
@@ -120,7 +124,7 @@ export function ArchivedAgentsSection() {
           <div className="relative">
             <Input
               aria-label="Search archived chats"
-              placeholder="Search archived chats"
+              placeholder={localize('Search archived chats')}
               value={searchQuery}
               onValueChange={(value) => {
                 setSearchQuery(value);
@@ -142,16 +146,18 @@ export function ArchivedAgentsSection() {
             {loading && entries.length === 0 ? (
               <div className="flex min-h-40 items-center justify-center gap-2 text-muted-foreground text-sm">
                 <Loader2Icon className="size-5 animate-spin" />
-                <span>Loading archived chats</span>
+                <span>{localize('Loading archived chats')}</span>
               </div>
             ) : entries.length === 0 && !hasMore ? (
               <div className="flex min-h-40 items-center justify-center px-6 text-center text-muted-foreground text-sm">
                 <p>
-                  {error
-                    ? 'Couldn’t load archived chats. Please try again.'
-                    : query
-                      ? 'No matching archived chats.'
-                      : 'Chats you archive will appear here.'}
+                  {localize(
+                    error
+                      ? 'Couldn’t load archived chats. Please try again.'
+                      : query
+                        ? 'No matching archived chats.'
+                        : 'Chats you archive will appear here.',
+                  )}
                 </p>
               </div>
             ) : (

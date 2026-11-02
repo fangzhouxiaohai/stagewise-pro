@@ -146,10 +146,13 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装位置：`E:\softs\stagewise-pro`（便携目录 + 快捷方式，不写入 C 盘）。
-  构建产物位于 `apps/browser/out/release/stagewise-pro-win32-x64`，执行
-  `pwsh -File scripts/install-portable.ps1` 完成复制与快捷方式创建。
-  详见 [installation.md](installation.md)。
+- 安装程序：`stagewise-pro-1.31.22-x64-setup.exe`（Inno Setup，当前用户安装）。
+  - 默认安装到 `E:\softs\stagewise-pro`；
+  - E 盘不存在时默认 `C:\softs\stagewise-pro`；
+  - 两个盘都不可用时停留在目录选择页，由用户指定位置；
+  - 安装向导弹出时也可手动修改目录。
+  安装包位于 `apps/browser/out/release/make/inno/`，构建方法见
+  [installation.md](installation.md)。
 - 用户数据仍位于 `%APPDATA%\stagewise`，覆盖安装不会丢失会话与设置。
 - 验证方式：安装后启动应用，通过 Chrome DevTools Protocol 截图设置页，确认：
   - 设置页导航与内容为中文；
@@ -157,4 +160,6 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
     六项设置均存在且可操作；
   - 默认工具审批显示“始终允许”，文字大小显示“M”，界面语言显示“简体中文”；
   - 中文模式下渲染进程 CPU 保持低位、CDP 可正常响应（无反馈环）；
-  - 侧栏日期分组显示“今天 / 昨天”，聊天输入框占位符为中文。
+  - 侧栏日期分组显示“今天 / 昨天”，聊天输入框占位符为中文；
+  - 历史页日期为“2026年11月2日星期一”，清除数据按钮、关于页“查看全部”、
+    已归档空状态均为中文。

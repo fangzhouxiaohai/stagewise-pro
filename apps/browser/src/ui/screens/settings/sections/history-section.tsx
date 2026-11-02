@@ -9,7 +9,7 @@ import { IconGlobe2Fill18 } from '@stagewise/icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2Icon, LinkIcon } from 'lucide-react';
 import { IconChevronRightOutline18 } from '@stagewise/icons';
-import { useKartonProcedure } from '@ui/hooks/use-karton';
+import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
 import { createRafResizeObserver } from '@ui/utils/resize-observer';
 import type {
   HistoryFilter,
@@ -61,8 +61,8 @@ type Row = DateHeaderRow | OriginGroupHeaderRow | EntryRow;
 // Helpers
 // =============================================================================
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
+function formatDate(date: Date, locale: 'zh-CN' | 'en-US'): string {
+  return date.toLocaleDateString(locale, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -95,13 +95,16 @@ function getUrlDisplayPath(url: string): string {
   }
 }
 
-function historyToRows(history: HistoryResult[]): Row[] {
+function historyToRows(
+  history: HistoryResult[],
+  dateLocale: 'zh-CN' | 'en-US',
+): Row[] {
   const rows: Row[] = [];
   let currentDate: string | null = null;
 
   const dateGroups: { date: string; entries: HistoryResult[] }[] = [];
   for (const entry of history) {
-    const dateKey = formatDate(entry.visitTime);
+    const dateKey = formatDate(entry.visitTime, dateLocale);
     if (dateKey !== currentDate) {
       currentDate = dateKey;
       dateGroups.push({ date: dateKey, entries: [] });
@@ -533,7 +536,11 @@ export function HistorySection() {
   }, []);
 
   // Convert history to rows + filter collapsed
-  const allRows = useMemo(() => historyToRows(history), [history]);
+  const uiLanguage = useKartonState((s) => s.preferences.general.language);
+  const allRows = useMemo(
+    () => historyToRows(history, uiLanguage === 'en' ? 'en-US' : 'zh-CN'),
+    [history, uiLanguage],
+  );
   const rows = useMemo(
     () => filterCollapsedRows(allRows, collapsedGroups),
     [allRows, collapsedGroups],

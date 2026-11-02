@@ -39,6 +39,15 @@ describe('translateUiString', () => {
     ).toBe('输入 / 运行命令，输入 @ 添加上下文。按 ↵ 立即发送');
   });
 
+  it('设置页按钮与空状态翻译', () => {
+    expect(translateUiString('Clear last 24 hours')).toBe('清除最近 24 小时');
+    expect(translateUiString('Clear all time')).toBe('清除全部时间');
+    expect(translateUiString('View All')).toBe('查看全部');
+    expect(translateUiString('Chats you archive will appear here.')).toBe(
+      '归档的对话会显示在这里。',
+    );
+  });
+
   it('未命中词典时返回原文', () => {
     expect(translateUiString('A completely unknown string')).toBe(
       'A completely unknown string',

@@ -55,21 +55,22 @@
 
 ## 安装
 
-程序本体固定安装到 **E 盘**：
+使用 `stagewise-pro-<版本>-x64-setup.exe` 安装：
+
+- 默认安装到 `E:\softs\stagewise-pro`；
+- 如果 E 盘不存在，则默认安装到 `C:\softs\stagewise-pro`；
+- 如果两个盘都不可用，安装向导会停留在目录选择页，由用户指定位置；
+- 安装向导本身也允许手动修改安装目录。
+
+安装包位于：
 
 ```text
-E:\softs\stagewise-pro
+apps/browser/out/release/make/inno/stagewise-pro-<版本>-x64-setup.exe
 ```
 
-构建打包产物后运行：
-
-```powershell
-pwsh -File scripts/install-portable.ps1
-```
-
-脚本会复制程序到 `E:\softs\stagewise-pro` 并创建开始菜单、桌面快捷方式，
-不会修改 C 盘安装目录，也不会删除 `%APPDATA%\stagewise` 中的用户数据。
-完整说明见 [docs/installation.md](docs/installation.md)。
+用户数据保留在 `%APPDATA%\stagewise`，覆盖安装不会丢失会话与设置。
+开发调试时也可以使用 `pwsh -File scripts/install-portable.ps1` 直接复制到
+`E:\softs\stagewise-pro`。完整说明见 [docs/installation.md](docs/installation.md)。
 
 ## 开发
 
@@ -85,7 +86,7 @@ pnpm test
 ```bash
 cd apps/browser
 $env:RELEASE_CHANNEL="release"
-$env:APP_VERSION_OVERRIDE="1.31.20"
+$env:APP_VERSION_OVERRIDE="1.31.22"
 $env:BUILD_MODE="production"
 pnpm make --arch=x64
 ```
