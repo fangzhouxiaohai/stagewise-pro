@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import type { TextUIPart } from 'ai';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setCurrentUiLanguage } from '@ui/i18n/ui-language-store';
 import {
   MessageStalledStream,
   STALLED_STREAM_MESSAGE,
@@ -11,8 +12,14 @@ const createStreamingParts = (text: string): TextUIPart[] => [
 ];
 
 describe('MessageStalledStream', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  beforeEach(() => {
+    setCurrentUiLanguage('en');
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    setCurrentUiLanguage('zh-CN');
+    vi.useRealTimers();
+  });
 
   it('appears after five quiet seconds and resets on the next chunk', () => {
     const initialParts = createStreamingParts('Partial');

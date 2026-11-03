@@ -25,6 +25,7 @@ import { ListLibraryDocsToolPart } from './list-library-docs';
 import { cn } from '@ui/utils';
 import type { PluginDefinition } from '@shared/plugins';
 import { useIsTruncated } from '@ui/hooks/use-is-truncated';
+import { useUiText } from '@ui/i18n/ui-language-store';
 import {
   Tooltip,
   TooltipContent,
@@ -231,6 +232,7 @@ export const ExploringToolParts = memo(
     /** Attachments from the parent assistant message metadata */
     messageAttachments?: AttachmentMetadata[];
   }) {
+    const t = useUiText();
     const [expanded, setExpanded] = useState(isAutoExpanded);
     const [expandedChildren, setExpandedChildren] = useState<Set<string>>(
       new Set(),
@@ -681,10 +683,11 @@ export const ExploringToolParts = memo(
       [items],
     );
 
-    const headerText =
+    const headerText = t(
       anyPartStreaming || isShimmering
         ? explorationInProgressText
-        : explorationFinishedText;
+        : explorationFinishedText,
+    );
 
     const headerRef = useRef<HTMLSpanElement>(null);
     const { isTruncated, tooltipOpen, setTooltipOpen } =

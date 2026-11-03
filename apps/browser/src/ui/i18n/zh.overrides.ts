@@ -14,6 +14,10 @@ export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
   'Default tool approval': '默认工具审批',
   'Interface language': '界面语言',
   'Auto-compact context': '自动压缩上下文',
+  'Enable auto-compact': '开启自动压缩',
+  'Summarize the conversation automatically when context usage reaches the selected percentage. When disabled, compress manually from the chat input with /compact.':
+    '当上下文占用达到所选比例时自动总结对话；关闭后可在聊天输入框用 /compact 手动压缩。',
+  'Compaction threshold': '压缩阈值',
   "Summarize the conversation automatically once a session reaches 80% of the model's context window. When disabled, compress manually from the chat input with /compact.":
     '当会话达到模型上下文窗口的 80% 时自动总结对话；关闭后可在对话输入框用 /compact 手动压缩。',
 
@@ -124,6 +128,13 @@ export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
   'Permanently delete': '永久删除',
   'Copy instance ID': '复制实例 ID',
   'Open data directory': '打开数据目录',
+
+  // 聊天与工具界面
+  'Working...': '正在处理…',
+  'Still on it…': '仍在处理…',
+  'Click to see full file': '点击查看完整文件',
+  Cancel: '取消',
+  'Reading file...': '正在读取文件…',
 
   // 明暗主题切换
   'Switch to dark mode': '切换到暗黑模式',

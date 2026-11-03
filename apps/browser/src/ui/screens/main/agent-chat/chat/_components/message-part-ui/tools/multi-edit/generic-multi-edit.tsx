@@ -12,6 +12,7 @@ import {
 } from '@stagewise/icons';
 import { cn, stripMountPrefix } from '@ui/utils';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
+import { useUiText } from '@ui/i18n/ui-language-store';
 import { useDiffLines } from '@ui/hooks/use-diff-lines';
 import { useMemo, useState } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
@@ -38,6 +39,7 @@ export const GenericMultiEditToolPart = ({
   initiallyCollapsed?: boolean;
 }) => {
   const [expanded, setExpanded] = useState(!initiallyCollapsed);
+  const t = useUiText();
   const [openAgent] = useOpenAgent();
   const openFileTab = useKartonProcedure((p) => p.fileTree.openFileTab);
   const revealInFolder = useKartonProcedure((p) => p.fileTree.revealInFolder);
@@ -231,10 +233,10 @@ export const GenericMultiEditToolPart = ({
                   }}
                 >
                   <IconArrowUpRightOutline18 className="size-3 shrink-0" />
-                  Open file
+                  {t('Open file')}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Click to see full file</TooltipContent>
+              <TooltipContent>{t('Click to see full file')}</TooltipContent>
             </Tooltip>
           </div>
         ) : undefined

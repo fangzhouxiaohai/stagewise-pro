@@ -32,7 +32,6 @@ import { WebDataService } from './services/webdata';
 import { AttachmentsService } from '@stagewise/agent-core/attachments';
 import { AgentCorePersistence } from '@stagewise/agent-core/persistence';
 import type { AgentManagerStartupPolicy } from '@stagewise/agent-core';
-import { DEFAULT_AUTO_COMPACTION_THRESHOLD } from '@stagewise/agent-core/agents';
 import { AgentTypes } from '@shared/karton-contracts/ui/agent';
 import { AutoUpdateService } from './services/auto-update';
 import { LocalPortsScannerService } from './services/local-ports-scanner';
@@ -301,7 +300,7 @@ export async function main({ launchOptions: { verbose } }: MainParameters) {
       const agentPreferences = preferencesService.get().agent;
       return {
         enabled: agentPreferences.autoCompactContext !== false,
-        threshold: DEFAULT_AUTO_COMPACTION_THRESHOLD,
+        threshold: agentPreferences.autoCompactThreshold / 100,
       };
     },
     // 新建会话的默认审批模式：读取用户偏好（首次安装默认 Always allow）。

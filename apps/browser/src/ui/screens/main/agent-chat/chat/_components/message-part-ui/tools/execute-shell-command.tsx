@@ -13,6 +13,7 @@ import {
   useShellToolApproval,
 } from './shared/shell-tool-approval';
 import { useIsTruncated } from '@ui/hooks/use-is-truncated';
+import { useUiText } from '@ui/i18n/ui-language-store';
 import { useKartonState, useKartonProcedure } from '@ui/hooks/use-karton';
 import { useOpenAgent } from '@ui/hooks/use-open-chat';
 import { cn } from '@ui/utils';
@@ -41,6 +42,7 @@ export const ExecuteShellCommandToolPart = ({
   >;
   isLastPart?: boolean;
 }) => {
+  const t = useUiText();
   const [openAgentId] = useOpenAgent();
   const killShellSession = useKartonProcedure(
     (p) => p.toolbox.killShellSession,
@@ -218,7 +220,7 @@ export const ExecuteShellCommandToolPart = ({
             }}
             className="-mr-2 ml-auto"
           >
-            Cancel
+            {t('Cancel')}
           </Button>
         </div>
       );

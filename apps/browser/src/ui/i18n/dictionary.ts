@@ -31,6 +31,30 @@ const PATTERNS: ReadonlyArray<{
     translate: (m) => `上下文已压缩：已折叠 ${m[1]} 条较早消息`,
   },
   {
+    pattern: /^Explored (\d+) files?$/,
+    translate: (m) => `浏览了 ${m[1]} 个文件`,
+  },
+  {
+    pattern: /^Explored (\d+) files? and (\d+) scripts?$/,
+    translate: (m) => `浏览了 ${m[1]} 个文件和 ${m[2]} 个脚本`,
+  },
+  {
+    pattern: /^Explored (\d+) files?, (\d+) scripts? and (\d+) attachments?$/,
+    translate: (m) => `浏览了 ${m[1]} 个文件、${m[2]} 个脚本和 ${m[3]} 个附件`,
+  },
+  {
+    pattern: /^Explored the codebase$/,
+    translate: () => '浏览了代码库',
+  },
+  {
+    pattern: /^Reading file\.\.\.$/,
+    translate: () => '正在读取文件…',
+  },
+  {
+    pattern: /^Enabling (.+)\.\.\.$/,
+    translate: (m) => `正在启用 ${m[1]}…`,
+  },
+  {
     pattern: /^(\d+) earlier messages summarized$/,
     translate: (m) => `已折叠 ${m[1]} 条较早消息`,
   },

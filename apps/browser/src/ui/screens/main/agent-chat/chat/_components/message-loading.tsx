@@ -1,4 +1,5 @@
 import { cn } from '@ui/utils';
+import { useUiText } from '@ui/i18n/ui-language-store';
 import {
   IconBranchOutOutline18,
   IconCodeBranchOutline18,
@@ -14,6 +15,7 @@ export function MessageLoading({
   label?: string;
   variant?: MessageLoadingVariant;
 }) {
+  const t = useUiText();
   const iconClassName = cn(
     'size-3',
     'animate-icon-pulse text-primary-foreground',
@@ -29,7 +31,7 @@ export function MessageLoading({
     <div className="mt-2 flex flex-row items-center gap-2">
       <div className="flex flex-row items-center justify-start gap-1 py-1.5">
         <Icon className={iconClassName} />
-        <div className="shimmer-text-primary w-fit text-xs">{label}</div>
+        <div className="shimmer-text-primary w-fit text-xs">{t(label)}</div>
       </div>
     </div>
   );

@@ -1171,11 +1171,15 @@ export const userPreferencesSchema = z.object({
       /**
        * 是否在所有会话中自动压缩上下文。
        *
-       * 打开后，会话的已用 token 超过当前模型上下文窗口的 80% 时
-       * 自动生成历史摘要；关闭后只能通过输入框的 `/compact`
+       * 打开后，会话的已用 token 达到 `autoCompactThreshold` 指定的上下文
+       * 窗口比例时自动生成历史摘要；关闭后只能通过输入框的 `/compact`
        * 斜杠命令手动压缩。
        */
       autoCompactContext: z.boolean().default(true),
+      /**
+       * 自动压缩的触发比例（百分比，20-80），默认 50%。
+       */
+      autoCompactThreshold: z.number().min(20).max(80).default(50),
       /**
        * 是否在聊天输入框旁显示上下文占用百分比（例如 `42%`）。默认开启。
        */
@@ -1302,6 +1306,7 @@ export const userPreferencesSchema = z.object({
       enabledGlobalSkillDirs: [],
       disabledGlobalSkills: [],
       autoCompactContext: true,
+      autoCompactThreshold: 50,
       showContextStats: true,
       defaultToolApprovalMode: 'alwaysAllow',
       globalSystemPrompt: '',
@@ -1426,6 +1431,7 @@ export const defaultUserPreferences: UserPreferences = {
     enabledGlobalSkillDirs: [],
     disabledGlobalSkills: [],
     autoCompactContext: true,
+    autoCompactThreshold: 50,
     showContextStats: true,
     defaultToolApprovalMode: 'alwaysAllow',
     globalSystemPrompt: '',

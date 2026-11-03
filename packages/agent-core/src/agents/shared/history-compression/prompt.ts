@@ -75,9 +75,8 @@ Condensation rules (when shortening is needed):
 export function buildCompressionUserMessage(
   compactHistory: string,
   previousBriefingChars = 0,
+  targetChars: number = COMPRESSION_TARGET_CHARS,
 ): string {
-  const targetChars = COMPRESSION_TARGET_CHARS;
-
   const ratio = previousBriefingChars / targetChars;
 
   let budgetHint: string;

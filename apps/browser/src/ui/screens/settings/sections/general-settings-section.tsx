@@ -287,16 +287,24 @@ function GlobalSystemPromptSetting() {
 // =============================================================================
 
 /**
- * 自动压缩上下文开关。
+ * 自动压缩上下文开关与阈值。
  *
- * 打开后所有会话在已用 token 超过模型上下文窗口的 80% 时自动生成摘要；
+ * 打开后所有会话在已用 token 达到所选比例（20%-80%）时自动生成摘要；
  * 关闭后仍可在聊天输入框用 `/compact` 手动压缩。
  */
 function AutoCompactContextSetting() {
   const autoCompactContext = useKartonState(
     (s) => s.preferences.agent.autoCompactContext,
   );
+  const autoCompactThreshold = useKartonState(
+    (s) => s.preferences.agent.autoCompactThreshold,
+  );
   const updatePreferences = useKartonProcedure((p) => p.preferences.update);
+  const [localThreshold, setLocalThreshold] = useState(autoCompactThreshold);
+
+  useEffect(() => {
+    setLocalThreshold(autoCompactThreshold);
+  }, [autoCompactThreshold]);
 
   const handleChange = async (checked: boolean) => {
     const patch: Patch = {
@@ -307,28 +315,68 @@ function AutoCompactContextSetting() {
     await updatePreferences([patch]);
   };
 
+  const commitThreshold = async (value: number) => {
+    const next = Math.max(20, Math.min(80, Math.round(value)));
+    if (next === autoCompactThreshold) return;
+    const patch: Patch = {
+      op: 'replace',
+      path: ['agent', 'autoCompactThreshold'],
+      value: next,
+    };
+    await updatePreferences([patch]);
+  };
+
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="min-w-0 flex-1">
-        <label htmlFor="agent-auto-compact-context">
-          <h3 className="font-medium text-base text-foreground">
-            Auto-compact context
-          </h3>
-          <p className="text-muted-foreground text-sm">
-            Summarize the conversation automatically once a session reaches 80%
-            of the model's context window. When disabled, compress manually from
-            the chat input with /compact.
-          </p>
-        </label>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <label htmlFor="agent-auto-compact-context">
+            <h3 className="font-medium text-base text-foreground">
+              Enable auto-compact
+            </h3>
+            <p className="text-muted-foreground text-sm">
+              Summarize the conversation automatically when context usage
+              reaches the selected percentage. When disabled, compress manually
+              from the chat input with /compact.
+            </p>
+          </label>
+        </div>
+
+        <Switch
+          id="agent-auto-compact-context"
+          checked={autoCompactContext}
+          onCheckedChange={handleChange}
+          size="xs"
+          className="mt-1 shrink-0"
+        />
       </div>
 
-      <Switch
-        id="agent-auto-compact-context"
-        checked={autoCompactContext}
-        onCheckedChange={handleChange}
-        size="xs"
-        className="mt-1 shrink-0"
-      />
+      {autoCompactContext && (
+        <div className="rounded-lg border border-border-subtle bg-surface-1/40 px-3 py-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <span className="font-medium text-foreground text-sm">
+              Compaction threshold
+            </span>
+            <span className="font-normal text-muted-foreground text-sm tabular-nums">
+              {localThreshold}%
+            </span>
+          </div>
+          <Slider
+            value={localThreshold}
+            min={20}
+            max={80}
+            step={5}
+            ariaLabel="Compaction threshold"
+            thickness="default"
+            onValueChange={setLocalThreshold}
+            onValueCommitted={commitThreshold}
+          />
+          <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
+            <span>20%</span>
+            <span>80%</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

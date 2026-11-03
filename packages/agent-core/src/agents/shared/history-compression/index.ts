@@ -58,7 +58,64 @@ export const HISTORY_COMPRESSION_MODELS = [
 ] as const;
 
 /** Maximum time (ms) allowed for a single history compression attempt. */
-const HISTORY_COMPRESSION_TIMEOUT_MS = 30_000;
+const HISTORY_COMPRESSION_TIMEOUT_MS = 180_000;
+
+/**
+ * 单次压缩调用允许的最大序列化字符数。
+ *
+ * 大模型（例如 1M 上下文）的历史在 40%-80% 占用时可能有数百万字符，
+ * 一次性塞给压缩模型会超出其上下文或超时。这里按块切分，逐块总结后拼接。
+ * 约 200k 字符 ≈ 50k token，可兼容 64k 上下文的本地模型。
+ */
+const MAX_COMPRESSION_CHUNK_CHARS = 200_000;
+
+/** 单块压缩的最大并发数，避免触发模型商限流。 */
+const COMPRESSION_CHUNK_CONCURRENCY = 2;
+
+/** 压缩块的最小输出预算，避免块数过多时每块摘要过短。 */
+const MIN_CHUNK_TARGET_CHARS = 3_000;
+
+function splitIntoCompressionChunks(text: string): string[] {
+  if (text.length <= MAX_COMPRESSION_CHUNK_CHARS) return [text];
+
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    let end = Math.min(start + MAX_COMPRESSION_CHUNK_CHARS, text.length);
+    if (end < text.length) {
+      const paragraphBreak = text.lastIndexOf('\n\n', end);
+      if (paragraphBreak > start + MAX_COMPRESSION_CHUNK_CHARS / 2) {
+        end = paragraphBreak;
+      }
+    }
+    chunks.push(text.slice(start, end));
+    start = end;
+  }
+  return chunks;
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, items.length);
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const index = nextIndex;
+        nextIndex += 1;
+        if (index >= items.length) return;
+        results[index] = await mapper(items[index] as T, index);
+      }
+    }),
+  );
+
+  return results;
+}
 
 /**
  * Grace period after aborting a timed-out compression request.
@@ -91,6 +148,7 @@ const tryCompressWithModel = async (
   agentInstanceId: string,
   compactHistory: string,
   previousBriefingChars: number,
+  targetChars: number,
   host?: AgentHost,
 ): Promise<string> => {
   const metadata: Record<string, unknown> = {
@@ -135,11 +193,15 @@ const tryCompressWithModel = async (
           content: buildCompressionUserMessage(
             compactHistory,
             previousBriefingChars,
+            targetChars,
           ),
         },
       ],
       temperature: 0.1,
-      maxOutputTokens: 20000,
+      maxOutputTokens: Math.min(
+        8_000,
+        Math.max(2_000, Math.ceil(targetChars / 4)),
+      ),
     }).then((result) => result.text.trim());
 
     const timeoutResult = Symbol('history-compression-timeout');
@@ -207,8 +269,6 @@ export const generateSimpleCompressedHistory = async (
     [...messages].reverse().find((m) => m.metadata?.compressedHistory)?.metadata
       ?.compressedHistory?.length ?? 0;
 
-  let lastError: Error | undefined;
-
   // Use user-configured utility models when available.
   // - undefined: not configured → use built-in defaults
   // - []: explicitly cleared → use main chat model as fallback
@@ -266,68 +326,104 @@ export const generateSimpleCompressedHistory = async (
     entries = [...entries, ...presetModels];
   }
 
-  const attemptedKeys = new Set<string>();
+  const chunks = splitIntoCompressionChunks(compactConvertedChatHistory);
+  const targetPerChunk =
+    chunks.length === 1
+      ? COMPRESSION_TARGET_CHARS
+      : Math.max(
+          MIN_CHUNK_TARGET_CHARS,
+          Math.floor(COMPRESSION_TARGET_CHARS / chunks.length),
+        );
 
-  for (const entry of entries) {
-    if (hostModels.supportsUtilityCalls?.(entry) === false) continue;
-    // Skip models that are no longer available (deleted provider, etc.)
-    // Pass `providerInstanceId` so discovered models (which only exist
-    // on a specific instance) are not falsely rejected.
-    if (!hostModels.has(entry.modelId, entry.providerInstanceId)) continue;
-    // Deduplicate by (modelId, providerInstanceId) so the active
-    // fallback remains available even if a failed entry shared the
-    // same model ID on a different instance.
-    const key = `${entry.modelId}::${entry.providerInstanceId ?? ''}`;
-    if (attemptedKeys.has(key)) continue;
-    attemptedKeys.add(key);
-    try {
-      return await tryCompressWithModel(
-        entry,
-        hostModels,
-        agentInstanceId,
-        compactConvertedChatHistory,
-        previousBriefingChars,
-        host,
-      );
-    } catch (e) {
-      lastError = e as Error;
-      if (lastError instanceof HistoryCompressionUnsettledTimeoutError) {
-        throw lastError;
-      }
-      // Continue to the next fallback model
-    }
-  }
-
-  // Last resort: try the active chat model if it wasn't already
-  // attempted (e.g. when no preset models were available).
-  const fallbackKey = `${fallbackModelId}::${fallbackProviderInstanceId ?? ''}`;
-  if (
-    fallbackModelId &&
-    !attemptedKeys.has(fallbackKey) &&
-    hostModels.supportsUtilityCalls?.(
-      fallbackEntry ?? { modelId: fallbackModelId },
-    ) !== false
-  ) {
-    host?.logger.warn(
-      `History compression: all preferred models failed, falling back to active model: ${fallbackModelId}`,
+  if (chunks.length > 1) {
+    host?.logger.debug(
+      `[history-compression] Splitting ${compactConvertedChatHistory.length} chars into ${chunks.length} chunks.`,
     );
-    try {
-      return await tryCompressWithModel(
-        fallbackEntry ?? { modelId: fallbackModelId },
-        hostModels,
-        agentInstanceId,
-        compactConvertedChatHistory,
-        previousBriefingChars,
-        host,
-      );
-    } catch (e) {
-      lastError = e as Error;
-      if (lastError instanceof HistoryCompressionUnsettledTimeoutError) {
-        throw lastError;
-      }
-    }
   }
 
-  // All models failed — rethrow the last error so the caller can handle it
-  throw lastError ?? new Error('All history compression models failed');
+  const compressChunk = async (
+    chunk: string,
+    chunkIndex: number,
+  ): Promise<string> => {
+    let lastError: Error | undefined;
+    const attemptedKeys = new Set<string>();
+
+    for (const entry of entries) {
+      if (hostModels.supportsUtilityCalls?.(entry) === false) continue;
+      // Skip models that are no longer available (deleted provider, etc.)
+      // Pass `providerInstanceId` so discovered models (which only exist
+      // on a specific instance) are not falsely rejected.
+      if (!hostModels.has(entry.modelId, entry.providerInstanceId)) continue;
+      // Deduplicate by (modelId, providerInstanceId) so the active
+      // fallback remains available even if a failed entry shared the
+      // same model ID on a different instance.
+      const key = `${entry.modelId}::${entry.providerInstanceId ?? ''}`;
+      if (attemptedKeys.has(key)) continue;
+      attemptedKeys.add(key);
+      try {
+        return await tryCompressWithModel(
+          entry,
+          hostModels,
+          agentInstanceId,
+          chunk,
+          chunkIndex === 0 ? previousBriefingChars : 0,
+          targetPerChunk,
+          host,
+        );
+      } catch (e) {
+        lastError = e as Error;
+        if (lastError instanceof HistoryCompressionUnsettledTimeoutError) {
+          throw lastError;
+        }
+        // Continue to the next fallback model
+      }
+    }
+
+    // Last resort: try the active chat model if it wasn't already
+    // attempted (e.g. when no preset models were available).
+    const fallbackKey = `${fallbackModelId}::${fallbackProviderInstanceId ?? ''}`;
+    if (
+      fallbackModelId &&
+      !attemptedKeys.has(fallbackKey) &&
+      hostModels.supportsUtilityCalls?.(
+        fallbackEntry ?? { modelId: fallbackModelId },
+      ) !== false
+    ) {
+      host?.logger.warn(
+        `History compression: all preferred models failed, falling back to active model: ${fallbackModelId}`,
+      );
+      try {
+        return await tryCompressWithModel(
+          fallbackEntry ?? { modelId: fallbackModelId },
+          hostModels,
+          agentInstanceId,
+          chunk,
+          chunkIndex === 0 ? previousBriefingChars : 0,
+          targetPerChunk,
+          host,
+        );
+      } catch (e) {
+        lastError = e as Error;
+        if (lastError instanceof HistoryCompressionUnsettledTimeoutError) {
+          throw lastError;
+        }
+      }
+    }
+
+    // All models failed for this chunk — fail the whole compression so the
+    // caller can surface the error instead of silently dropping context.
+    throw lastError ?? new Error('All history compression models failed');
+  };
+
+  const summaries = await mapWithConcurrency(
+    chunks,
+    COMPRESSION_CHUNK_CONCURRENCY,
+    compressChunk,
+  );
+  const combined = summaries.join('\n\n').trim();
+  if (combined.length < COMPRESSION_MIN_LENGTH) {
+    throw new Error(`Compression too short (${combined.length} chars)`);
+  }
+
+  return combined;
 };

@@ -615,6 +615,20 @@ describe('userPreferencesSchema 自动压缩上下文默认值', () => {
 
     expect(parsed.agent.autoCompactContext).toBe(false);
   });
+
+  it('自动压缩阈值默认 50%，保留 20-80 的自定义值', () => {
+    expect(userPreferencesSchema.parse({}).agent.autoCompactThreshold).toBe(50);
+    expect(
+      userPreferencesSchema.parse({
+        agent: { autoCompactThreshold: 35 },
+      }).agent.autoCompactThreshold,
+    ).toBe(35);
+    expect(
+      userPreferencesSchema.parse({
+        agent: { autoCompactThreshold: 80 },
+      }).agent.autoCompactThreshold,
+    ).toBe(80);
+  });
 });
 
 describe('userPreferencesSchema 上下文与速度显示默认值', () => {

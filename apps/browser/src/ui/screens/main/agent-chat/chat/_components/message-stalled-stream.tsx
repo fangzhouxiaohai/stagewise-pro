@@ -1,4 +1,5 @@
 import type { AgentMessage } from '@shared/karton-contracts/ui/agent';
+import { useUiText } from '@ui/i18n/ui-language-store';
 import { useDebouncedValue } from '@ui/hooks/use-debounced-value';
 
 const STALL_DELAY_MS = 5_000;
@@ -10,6 +11,7 @@ export function MessageStalledStream({
 }: {
   parts: AgentMessage['parts'];
 }) {
+  const t = useUiText();
   const stalledParts = useDebouncedValue<AgentMessage['parts'] | null>(
     parts,
     STALL_DELAY_MS,
@@ -20,7 +22,7 @@ export function MessageStalledStream({
 
   return (
     <div className="text-muted-foreground text-xs italic">
-      {STALLED_STREAM_MESSAGE}
+      {t(STALLED_STREAM_MESSAGE)}
     </div>
   );
 }

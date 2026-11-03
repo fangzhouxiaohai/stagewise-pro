@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect } from 'react';
 import { useKartonState } from '@ui/hooks/use-karton';
+import { setCurrentUiLanguage } from '../i18n/ui-language-store';
 import { uiTranslator } from '../i18n/translator';
 import { textSizeToRootFontSize } from '../i18n/text-size';
 
@@ -23,6 +24,7 @@ export function UiPreferenceSyncer() {
 
   useLayoutEffect(() => {
     document.documentElement.lang = language === 'en' ? 'en' : 'zh-CN';
+    setCurrentUiLanguage(language === 'en' ? 'en' : 'zh-CN');
 
     if (language === 'en') {
       uiTranslator.stop();
