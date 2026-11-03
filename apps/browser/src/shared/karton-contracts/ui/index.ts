@@ -2301,7 +2301,7 @@ export type KartonContract = {
 export const defaultState: KartonContract['state'] = {
   appScreen: {
     mode: 'main',
-    settingsRoute: { section: 'models-providers' },
+    settingsRoute: { section: 'agent-general' },
   },
   internalData: {
     posthog: {

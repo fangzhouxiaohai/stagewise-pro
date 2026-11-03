@@ -669,7 +669,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
         this.uiKarton.setState((draft) => {
           draft.appScreen.mode = 'settings';
           draft.appScreen.settingsRoute = route ?? {
-            section: 'models-providers',
+            section: 'agent-general',
           };
         });
       },
@@ -1181,7 +1181,7 @@ export class UIController extends EventEmitter<UIControllerEventMap> {
   public setAppScreenSettings(): void {
     this.uiKarton.setState((draft) => {
       draft.appScreen.mode = 'settings';
-      draft.appScreen.settingsRoute = { section: 'models-providers' };
+      draft.appScreen.settingsRoute = { section: 'agent-general' };
     });
   }
 

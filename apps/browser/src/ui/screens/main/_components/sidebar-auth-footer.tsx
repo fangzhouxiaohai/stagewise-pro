@@ -87,7 +87,7 @@ export function SidebarAuthFooter() {
     }
 
     track('settings-opened');
-    void openSettings({ section: 'models-providers' });
+    void openSettings({ section: 'agent-general' });
   }, [closeSettings, isSettingsOpen, openSettings, track]);
 
   const handleOpenAccount = useCallback(() => {

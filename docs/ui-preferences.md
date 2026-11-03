@@ -88,6 +88,7 @@
 - 圆环颜色随占用变化（≥70% 警告色，≥90% 错误色），悬浮提示显示
   `x% - 12k / 64k used`。
 - 生成速度的计算与显示已整体移除，界面不再出现 `tok/s`。
+- 打开设置（侧栏齿轮、应用菜单）默认进入“常规”页，而不是“模型与服务商”。
 
 ## 三、默认工具审批模式（默认 Always allow）
 
@@ -164,7 +165,7 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装程序：`stagewise-pro-1.31.29-x64-setup.exe`（Inno Setup，当前用户安装）。
+- 安装程序：`stagewise-pro-1.31.30-x64-setup.exe`（Inno Setup，当前用户安装）。
   - 默认安装到 `E:\softs\stagewise-pro`；
   - E 盘不存在时默认 `C:\softs\stagewise-pro`；
   - 两个盘都不可用时停留在目录选择页，由用户指定位置；
