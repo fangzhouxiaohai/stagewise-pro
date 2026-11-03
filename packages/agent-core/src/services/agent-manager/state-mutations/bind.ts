@@ -28,7 +28,6 @@ import {
   setCompactionState,
   setInputState,
   setIsWorkingFalse,
-  setStepTokensPerSecond,
   setTitle,
   setUsageWarning,
   setUserTitle,
@@ -79,9 +78,6 @@ export function bindStateMutations(store: AgentStore, agentInstanceId: string) {
       setUsageWarning(store, agentInstanceId, args),
     recordUsage: (args: Parameters<typeof recordUsage>[2]) =>
       recordUsage(store, agentInstanceId, args),
-    setStepTokensPerSecond: (
-      args: Parameters<typeof setStepTokensPerSecond>[2],
-    ) => setStepTokensPerSecond(store, agentInstanceId, args),
     setCompactionState: (args: Parameters<typeof setCompactionState>[2]) =>
       setCompactionState(store, agentInstanceId, args),
 

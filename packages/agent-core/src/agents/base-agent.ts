@@ -85,10 +85,6 @@ import {
   resolveAutoCompactionTriggerTokens,
   type AutoCompactionPolicy,
 } from './shared/auto-compaction';
-import {
-  computeTokensPerSecond,
-  countStreamedContentChars,
-} from './shared/step-metrics';
 import { appendGlobalSystemPrompt } from './shared/system-prompt';
 import { AgentMemoryWriter, type MemoryWriteReason } from './shared/memory';
 import type { AttachmentsService } from '../services/attachments';
@@ -648,13 +644,6 @@ export abstract class BaseAgent<
    */
   private _stepGeneration = 0;
   private _stepStartTime = 0;
-  /**
-   * 生成速度统计窗口：首次出现文本/推理内容的时间与最后一次内容增长的
-   * 时间。只覆盖模型真正在产出内容的阶段，避免把工具执行时间算进去。
-   */
-  private _generationStartedAt = 0;
-  private _generationEndedAt = 0;
-  private _lastStreamedContentChars = 0;
   private _stepProviderMode = '';
   private _stepCodingPlanId: string | undefined;
   private _stepProviderType: string | undefined;
@@ -1744,9 +1733,6 @@ export abstract class BaseAgent<
     // ignored. Capture it in a local const for the closures below.
     const stepGen = ++this._stepGeneration;
     this._stepStartTime = Date.now();
-    this._generationStartedAt = 0;
-    this._generationEndedAt = 0;
-    this._lastStreamedContentChars = 0;
     // Reset continuation flag at the start of every step so a leftover
     // value from a prior aborted step cannot leak into the tail.
     this._pendingContinue = null;
@@ -2973,19 +2959,6 @@ export abstract class BaseAgent<
   private async handlePostStep(
     result: StepResult<ToolSet>,
   ): Promise<{ shouldRun: boolean; flushQueue: boolean }> {
-    // 生成速度：只用流式内容增长的窗口，避免把工具执行时间算进去。
-    // 没有可测输出时保留上一次有效速度，不要清空为 undefined。
-    const stepTokensPerSecond = computeTokensPerSecond(
-      result.usage.outputTokens,
-      this._generationStartedAt,
-      this._generationEndedAt,
-    );
-    if (stepTokensPerSecond !== undefined) {
-      this.state.commands.setStepTokensPerSecond({
-        tokensPerSecond: stepTokensPerSecond,
-      });
-    }
-
     // 解析当前模型上下文窗口：既用于记录给 UI（保证指示器与后端阈值
     // 使用同一口径），也用于自动压缩触发判断。解析失败时回退到上一次
     // 已知窗口，仍能继续做压缩检查。
@@ -3495,20 +3468,6 @@ export abstract class BaseAgent<
         ? structuredClone(lastAssistantMessage)
         : undefined,
     })) {
-      // 跟踪流式内容的增长窗口，用于计算生成速度（tok/s）。
-      const streamedChars = countStreamedContentChars(
-        uiMessage.parts as unknown as ReadonlyArray<{
-          type?: string;
-          text?: unknown;
-        }>,
-      );
-      if (streamedChars > this._lastStreamedContentChars) {
-        const now = Date.now();
-        if (this._generationStartedAt === 0) this._generationStartedAt = now;
-        this._generationEndedAt = now;
-        this._lastStreamedContentChars = streamedChars;
-      }
-
       this.state.commands.mergeUIMessageStream({
         uiMessage,
         onApprovalRequested: ({ approvalId, toolPart }) => {

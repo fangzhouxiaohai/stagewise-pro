@@ -1,20 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatTokenSpeed, MessageCompaction } from './message-compaction';
-
-describe('formatTokenSpeed', () => {
-  it('格式化有效速度并四舍五入', () => {
-    expect(formatTokenSpeed(18)).toBe('18 tok/s');
-    expect(formatTokenSpeed(18.6)).toBe('19 tok/s');
-  });
-
-  it('缺失或非法速度返回 null', () => {
-    expect(formatTokenSpeed(undefined)).toBeNull();
-    expect(formatTokenSpeed(0)).toBeNull();
-    expect(formatTokenSpeed(-1)).toBeNull();
-    expect(formatTokenSpeed(Number.NaN)).toBeNull();
-  });
-});
+import { MessageCompaction } from './message-compaction';
 
 describe('MessageCompaction', () => {
   beforeEach(() => vi.useFakeTimers());

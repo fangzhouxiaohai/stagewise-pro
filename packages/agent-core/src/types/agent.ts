@@ -126,12 +126,6 @@ export type AgentState<TMessage = AgentMessage> = {
     resetsAt: string;
   };
   /**
-   * @persistence ephemeral — reset on resume; generation throughput of the
-   * most recently completed step (tokens per second over the streaming
-   * window). `undefined` when the step produced no measurable output.
-   */
-  lastStepTokensPerSecond?: number;
-  /**
    * @persistence ephemeral — reset on resume; context-compaction lifecycle
    * surfaced to the chat UI.
    *

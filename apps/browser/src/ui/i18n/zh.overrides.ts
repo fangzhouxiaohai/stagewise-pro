@@ -6,7 +6,9 @@
  */
 export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
   // 关键设置项
-  'Show context usage and speed': '显示上下文占用与速度',
+  'Show context usage': '显示上下文占用',
+  'Show the context window usage next to the model selector.':
+    '在模型选择器旁显示上下文窗口使用情况。',
   'Text size': '文字大小',
   'Global instructions': '全局提示词',
   'Default tool approval': '默认工具审批',
@@ -60,7 +62,6 @@ export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
 
   // 修正机器翻译
   Expires: '过期时间',
-  'Show context usage': '显示上下文占用',
   'Check Again': '重新检查',
   'Always Allow': '始终允许',
   'Always Ask': '始终询问',

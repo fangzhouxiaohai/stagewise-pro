@@ -109,19 +109,6 @@ export function recordUsage(
 }
 
 /**
- * 更新最近一步的生成速度（token/秒），供输入框并排展示。
- */
-export function setStepTokensPerSecond(
-  store: AgentStore,
-  agentInstanceId: string,
-  args: { tokensPerSecond: number | undefined },
-): void {
-  updateAgentInstanceState(store, agentInstanceId, (state) => {
-    state.lastStepTokensPerSecond = args.tokensPerSecond;
-  });
-}
-
-/**
  * 更新上下文压缩的运行状态（running / completed / failed）。
  *
  * 传入 `compaction: undefined` 可清除状态，用于“无可压缩内容”等

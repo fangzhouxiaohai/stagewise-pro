@@ -1177,8 +1177,7 @@ export const userPreferencesSchema = z.object({
        */
       autoCompactContext: z.boolean().default(true),
       /**
-       * 是否在聊天输入框旁显示上下文占用百分比与最近一步的生成速度
-       * （例如 `42% · 18 tok/s`）。默认开启。
+       * 是否在聊天输入框旁显示上下文占用百分比（例如 `42%`）。默认开启。
        */
       showContextStats: z.boolean().default(true),
       /**

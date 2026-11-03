@@ -110,7 +110,6 @@ Source of truth for rehydration:
 | `error`                 | ephemeral      | Not stored. Set by the runloop on failure.                                                                                                                    | yes — cleared                                             |
 | `unread`                | persisted-core | `agentInstances.unread`.                                                                                                                                       | restored                                                  |
 | `usageWarning`          | ephemeral      | Not stored. Populated by the model provider on soft-limit proximity.                                                                                          | yes — cleared                                             |
-| `lastStepTokensPerSecond` | ephemeral    | Not stored. Set by `handlePostStep` from the step's output tokens and streaming window.                                                                        | yes — cleared                                             |
 | `compaction`            | ephemeral      | Not stored. Set by the history-compaction pipeline (`running` / `completed` / `failed`) so the chat UI can render progress and the result.                     | yes — cleared                                             |
 
 As of Phase 6 (see §3.2), `toolApprovalMode` is store-canonical and

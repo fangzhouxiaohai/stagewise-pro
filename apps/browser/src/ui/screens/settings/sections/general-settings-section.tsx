@@ -338,10 +338,9 @@ function AutoCompactContextSetting() {
 // =============================================================================
 
 /**
- * 上下文与速度显示开关。
+ * 上下文占用显示开关。
  *
- * 打开后在聊天输入框的模型选择器旁并排显示上下文占用百分比和
- * 最近一步的生成速度（例如 `42% · 18 tok/s`）。
+ * 打开后在聊天输入框的模型选择器旁显示上下文占用百分比（例如 `42%`）。
  */
 function ShowContextStatsSetting() {
   const showContextStats = useKartonState(
@@ -363,11 +362,10 @@ function ShowContextStatsSetting() {
       <div className="min-w-0 flex-1">
         <label htmlFor="agent-show-context-stats">
           <h3 className="font-medium text-base text-foreground">
-            Show context usage and speed
+            Show context usage
           </h3>
           <p className="text-muted-foreground text-sm">
-            Show the context window usage next to the model selector, together
-            with the latest generation speed (for example 200 tok/s).
+            Show the context window usage next to the model selector.
           </p>
         </label>
       </div>

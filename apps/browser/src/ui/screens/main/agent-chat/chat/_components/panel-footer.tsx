@@ -2,7 +2,6 @@ import posthog from 'posthog-js';
 import { StatusCard } from './footer-status-card';
 import type { SelectedElement } from '@shared/selected-elements';
 import { useMessageEditState } from '@ui/hooks/use-message-edit-state';
-import { useLastTokenSpeed } from '@ui/hooks/use-last-token-speed';
 import { MessageAttachmentsProvider } from '@ui/hooks/use-message-elements';
 import { useFileAttachments } from '@ui/hooks/use-file-attachments';
 import { useIsTruncated } from '@ui/hooks/use-is-truncated';
@@ -1215,15 +1214,6 @@ export const ChatPanelFooter = memo(function ChatPanelFooter({
   const showContextStats = useKartonState(
     (s) => s.preferences.agent.showContextStats !== false,
   );
-  const stateTokensPerSecond = useKartonState((s) =>
-    openAgent
-      ? s.agents.instances[openAgent]?.state.lastStepTokensPerSecond
-      : undefined,
-  );
-  const tokensPerSecond = useLastTokenSpeed(
-    openAgent ?? undefined,
-    stateTokensPerSecond,
-  );
   const activeModelId = useKartonState((s) =>
     openAgent ? s.agents.instances[openAgent]?.state.activeModelId : null,
   );
@@ -1989,7 +1979,6 @@ export const ChatPanelFooter = memo(function ChatPanelFooter({
             contextUsedKb={displayedUsedTokens ? displayedUsedTokens / 1000 : 0}
             contextMaxKb={maxTokens ? maxTokens / 1000 : 0}
             showContextStats={showContextStats}
-            tokensPerSecond={tokensPerSecond}
             hasQueuedMessages={hasQueuedMessages}
             onFlushQueue={handleFlushQueue}
             onFocus={onInputFocus}

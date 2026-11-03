@@ -251,10 +251,8 @@ export interface ChatInputProps {
   contextUsedPercentage?: number;
   contextUsedKb?: number;
   contextMaxKb?: number;
-  /** 是否在圆环旁并排显示上下文百分比与生成速度。 */
+  /** 是否在圆环旁并排显示上下文百分比。 */
   showContextStats?: boolean;
-  /** 最近一步的生成速度（token/秒）。 */
-  tokensPerSecond?: number;
 
   // Queued messages (for early flushing)
   hasQueuedMessages?: boolean;
@@ -337,7 +335,6 @@ export const ChatInput = memo(function ChatInput({
   contextUsedKb = 0,
   contextMaxKb = 0,
   showContextStats = false,
-  tokensPerSecond,
 
   hasQueuedMessages = false,
   onFlushQueue,
@@ -912,9 +909,6 @@ export const ChatInput = memo(function ChatInput({
                   usedKb={contextUsedKb}
                   maxKb={contextMaxKb}
                   showPercentage={showContextStats}
-                  tokensPerSecond={
-                    showContextStats ? tokensPerSecond : undefined
-                  }
                 />
               )}
             {showToolApprovalSelect && (

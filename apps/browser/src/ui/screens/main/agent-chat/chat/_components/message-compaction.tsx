@@ -8,22 +8,6 @@ const RESULT_VISIBLE_MS = 8_000;
 export type CompactionState = NonNullable<AgentState['compaction']>;
 
 /**
- * 把生成速度格式化为 `18 tok/s`；非法或缺失时返回 null。
- */
-export function formatTokenSpeed(
-  tokensPerSecond: number | undefined,
-): string | null {
-  if (
-    typeof tokensPerSecond !== 'number' ||
-    !Number.isFinite(tokensPerSecond) ||
-    tokensPerSecond <= 0
-  ) {
-    return null;
-  }
-  return `${Math.round(tokensPerSecond)} tok/s`;
-}
-
-/**
  * 对话内的上下文压缩状态提示。
  *
  * - 进行中：展示脉冲动画，让用户知道压缩已经触发；

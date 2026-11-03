@@ -33,8 +33,7 @@
 - 设置 → 智能体 → 常规新增“自动压缩上下文”（默认开启）：会话达到模型上下文窗口
   80% 时自动总结历史，压缩完成后继续当前任务，不中断执行。
 - 压缩过程在对话内显示动画与结果，失败时显示原因。
-- 模型选择器旁显示上下文占用百分比与最近生成速度（例如 `42% · 18 tok/s`），
-  可在设置中关闭。
+- 模型选择器旁显示上下文占用百分比（例如 `42%`），可在设置中关闭。
 
 ### 审批与提示词
 
@@ -86,7 +85,7 @@ pnpm test
 ```bash
 cd apps/browser
 $env:RELEASE_CHANNEL="release"
-$env:APP_VERSION_OVERRIDE="1.31.28"
+$env:APP_VERSION_OVERRIDE="1.31.29"
 $env:BUILD_MODE="production"
 pnpm make --arch=x64
 ```

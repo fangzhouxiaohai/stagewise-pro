@@ -56,15 +56,13 @@
   下一次模型请求直接使用压缩后的历史，任务不会中断，也不会因上下文溢出报错。
 - 额外增加请求前检查：恢复会话或上一轮刚越过 80% 时，先压缩再发请求。
 
-### 2.4 上下文与生成速度显示
+### 2.4 上下文占用显示
 
-- 位置：设置 → Agent → General → `Show context usage and speed`（默认开启）。
-- 打开后，输入框模型选择器旁并排显示上下文占用百分比与最近一步的生成速度，
-  例如 `42% · 18 tok/s`；圆环颜色随占用变化（≥70% 警告色，≥90% 错误色），
-  悬浮提示同时给出 `x% - 12k / 64k used` 与速度。
-- 关闭后恢复旧行为：仅在占用超过 80%（或 dev 构建）时显示圆环，不显示速度。
-- 生成速度只统计模型真正输出内容的窗口（首次出现文本/推理增量到最后一次增量），
-  不包含工具执行与审批等待时间，避免工具密集步骤被严重低估。
+- 位置：设置 → Agent → General → `Show context usage`（默认开启）。
+- 打开后，输入框模型选择器旁显示上下文占用百分比；圆环颜色随占用变化
+  （≥70% 警告色，≥90% 错误色），悬浮提示给出 `x% - 12k / 64k used`。
+- 关闭后仅在占用超过 80%（或 dev 构建）时显示圆环。
+- 生成速度的计算与显示已移除，不再有 `tok/s` 相关逻辑与界面。
 
 ### 2.6 关于“超过 80% 却看不到压缩”的排查结论
 
@@ -100,9 +98,8 @@
 | 文件 | 说明 |
 | --- | --- |
 | `packages/agent-core/src/agents/shared/auto-compaction.ts` | 触发阈值解析（宿主策略优先，历史配置兜底） |
-| `packages/agent-core/src/agents/shared/step-metrics.ts` | 流式内容窗口与生成速度（tok/s）计算 |
-| `packages/agent-core/src/agents/base-agent.ts` | 请求前/步骤后压缩检查、`compactHistoryNow`、压缩状态机、上下文窗口回写、速度统计 |
-| `packages/agent-core/src/types/agent.ts` | 瞬态字段 `compaction` 与 `lastStepTokensPerSecond` |
+| `packages/agent-core/src/agents/base-agent.ts` | 请求前/步骤后压缩检查、`compactHistoryNow`、压缩状态机、上下文窗口回写 |
+| `packages/agent-core/src/types/agent.ts` | 瞬态字段 `compaction` |
 | `packages/agent-core/src/host/host.ts` | 新增 `autoCompactionPolicyProvider` 宿主能力位 |
 | `packages/agent-core/src/services/agent-manager/agent-manager.ts` | `agents.compactHistory` 命令注册与 `compactAgentHistory` |
 | `apps/browser/src/backend/main.ts` | 注入读取偏好 `agent.autoCompactContext` 的策略提供者 |
@@ -111,9 +108,9 @@
 | `apps/browser/src/backend/services/agent-manager/agent-manager.ts` | 转发 `agents.compactHistory` RPC |
 | `apps/browser/src/ui/hooks/use-compact-context.ts` | 手动压缩的 UI 逻辑与 Toast 状态 |
 | `apps/browser/src/ui/screens/main/agent-chat/chat/_components/message-compaction.tsx` | 对话内压缩进行中/结果提示 |
-| `apps/browser/src/ui/screens/main/agent-chat/chat/_components/context-usage-ring.tsx` | 上下文百分比 + 生成速度并排显示 |
+| `apps/browser/src/ui/screens/main/agent-chat/chat/_components/context-usage-ring.tsx` | 上下文占用百分比显示 |
 | `apps/browser/src/ui/screens/main/agent-chat/chat/_components/rich-text/slash/provider.ts` 等 | `/compact` 内置命令条目、图标、选择后的即时执行 |
-| `apps/browser/src/ui/screens/settings/sections/general-settings-section.tsx` | 自动压缩与上下文/速度显示开关 |
+| `apps/browser/src/ui/screens/settings/sections/general-settings-section.tsx` | 自动压缩与上下文占用显示开关 |
 | `.agents/skills/history-compression/SKILL.md` | 同步更新压缩触发说明 |
 
 ## 四、验证记录
