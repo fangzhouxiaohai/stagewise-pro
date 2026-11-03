@@ -39,6 +39,8 @@ export interface UiTranslator {
   stop: () => void;
   /** 立即同步扫描整个文档，供路由切换等布局阶段调用。 */
   translateNow: () => void;
+  /** 同步翻译某个子树，供聊天工具卡片等局部区域使用。 */
+  translateSubtree: (root: Element) => void;
   isActive: () => boolean;
 }
 
@@ -61,18 +63,26 @@ export function createUiTranslator(
   const writtenAttributes = new WeakMap<Element, Map<string, string>>();
   let active = false;
 
-  function skipNode(node: Node): boolean {
+  function skipNode(node: Node, forceRoot?: Element): boolean {
     const element =
       node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as Element);
-    return !!element?.closest(SKIP_SELECTOR);
+    const skip = element?.closest(SKIP_SELECTOR);
+    if (!skip) return false;
+    // 工具卡片等局部翻译：聊天内容的整块 skip 祖先不应阻止卡片内部翻译，
+    // 但卡片内部的 code/pre/编辑器仍需跳过。
+    if (forceRoot && !forceRoot.contains(skip)) return false;
+    return true;
   }
 
-  function skipAttributeNode(element: Element): boolean {
-    return !!element.closest('[data-i18n-skip], script, style');
+  function skipAttributeNode(element: Element, forceRoot?: Element): boolean {
+    const skip = element.closest('[data-i18n-skip], script, style');
+    if (!skip) return false;
+    if (forceRoot && !forceRoot.contains(skip)) return false;
+    return true;
   }
 
-  function translateTextNode(node: Text) {
-    if (!active || skipNode(node)) return;
+  function translateTextNode(node: Text, forceRoot?: Element) {
+    if (!active || skipNode(node, forceRoot)) return;
     const current = node.nodeValue;
     if (current === null) return;
     const trimmed = current.trim();
@@ -97,8 +107,12 @@ export function createUiTranslator(
     }
   }
 
-  function translateAttribute(element: Element, name: string) {
-    if (!active || skipAttributeNode(element)) return;
+  function translateAttribute(
+    element: Element,
+    name: string,
+    forceRoot?: Element,
+  ) {
+    if (!active || skipAttributeNode(element, forceRoot)) return;
     const current = element.getAttribute(name);
     if (!current) return;
     const trimmed = current.trim();
@@ -124,21 +138,23 @@ export function createUiTranslator(
     }
   }
 
-  function translateElementAttributes(element: Element) {
+  function translateElementAttributes(element: Element, forceRoot?: Element) {
     for (const name of TRANSLATABLE_ATTRIBUTES) {
-      if (element.hasAttribute(name)) translateAttribute(element, name);
+      if (element.hasAttribute(name)) {
+        translateAttribute(element, name, forceRoot);
+      }
     }
   }
 
-  function walk(root: Node) {
+  function walk(root: Node, forceRoot?: Element) {
     if (root.nodeType === Node.TEXT_NODE) {
-      translateTextNode(root as Text);
+      translateTextNode(root as Text, forceRoot);
       return;
     }
     if (root.nodeType !== Node.ELEMENT_NODE) return;
 
     const element = root as Element;
-    translateElementAttributes(element);
+    translateElementAttributes(element, forceRoot);
     if (element.matches(SKIP_SELECTOR)) return;
 
     const elementWalker = document.createTreeWalker(
@@ -147,14 +163,14 @@ export function createUiTranslator(
     );
     let descendant = elementWalker.nextNode();
     while (descendant) {
-      translateElementAttributes(descendant as Element);
+      translateElementAttributes(descendant as Element, forceRoot);
       descendant = elementWalker.nextNode();
     }
 
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
     let textNode = walker.nextNode();
     while (textNode) {
-      translateTextNode(textNode as Text);
+      translateTextNode(textNode as Text, forceRoot);
       textNode = walker.nextNode();
     }
   }
@@ -187,10 +203,17 @@ export function createUiTranslator(
   let popupObserver: MutationObserver | null = null;
   const startupScanTimers: Array<ReturnType<typeof setTimeout>> = [];
 
+  function translateToolParts() {
+    Array.from(document.querySelectorAll('[data-tool-ui]')).forEach((el) => {
+      walk(el, el);
+    });
+  }
+
   function runScan() {
     if (!active) return;
     lastScanAt = Date.now();
     walk(document.body);
+    translateToolParts();
   }
 
   /**
@@ -286,6 +309,11 @@ export function createUiTranslator(
       if (!active) return;
       lastScanAt = Date.now();
       walk(document.body);
+      translateToolParts();
+    },
+    translateSubtree(root: Element) {
+      if (!active) return;
+      walk(root, root);
     },
   };
 }

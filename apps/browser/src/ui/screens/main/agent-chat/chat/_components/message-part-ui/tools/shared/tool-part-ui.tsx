@@ -8,6 +8,7 @@ import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollb
 import { cn } from '@ui/utils';
 import { ChevronDownIcon } from 'lucide-react';
 import { useAutoScroll } from '@ui/hooks/use-auto-scroll';
+import { useTranslatedSubtree } from '@ui/i18n/use-translated-subtree';
 
 type ToolPartUIProps = {
   className?: string;
@@ -36,9 +37,13 @@ type ToolPartUIProps = {
 };
 
 export const ToolPartUI = (props: ToolPartUIProps) => {
+  const translatedRef = useTranslatedSubtree<HTMLDivElement>();
+
   if (props.content === undefined) {
     return (
       <div
+        ref={translatedRef}
+        data-tool-ui=""
         className={cn(
           'flex h-6 w-full items-center gap-1 truncate font-normal text-muted-foreground',
           props.showBorder &&
@@ -51,7 +56,11 @@ export const ToolPartUI = (props: ToolPartUIProps) => {
     );
   }
 
-  return <ToolPartUIWithContent {...props} content={props.content} />;
+  return (
+    <div ref={translatedRef} data-tool-ui="" className="contents">
+      <ToolPartUIWithContent {...props} content={props.content} />
+    </div>
+  );
 };
 
 /**

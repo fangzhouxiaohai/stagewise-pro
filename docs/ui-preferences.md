@@ -18,7 +18,7 @@
     编辑器、Monaco、终端，避免翻译用户内容或模型输出。
 
 已覆盖：设置页全部导航与章节、聊天输入框、侧栏、命令面板、压缩提示、
-右键菜单与下拉框（弹层挂载时、绘制前同步翻译）、审批模式菜单、
+右键菜单与下拉框（弹层挂载时、绘制前同步翻译）、聊天工具卡片（Explored/Found/Working/Still on it/Open file/Cancel 等）、审批模式菜单、
 常用弹窗和错误提示。
 
 保留英文（有意或暂未覆盖）：模型与服务商品牌名、模型自带描述、原生应用菜单、
@@ -167,7 +167,7 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装程序：`stagewise-pro-1.31.31-x64-setup.exe`（Inno Setup，当前用户安装）。
+- 安装程序：`stagewise-pro-1.31.35-x64-setup.exe`（Inno Setup，当前用户安装）。
   - 默认安装到 `E:\softs\stagewise-pro`；
   - E 盘不存在时默认 `C:\softs\stagewise-pro`；
   - 两个盘都不可用时停留在目录选择页，由用户指定位置；

@@ -26,7 +26,7 @@ apps/browser/out/release/make/inno/stagewise-pro-<版本>-x64-setup.exe
 ```powershell
 cd apps/browser
 $env:RELEASE_CHANNEL = "release"
-$env:APP_VERSION_OVERRIDE = "1.31.31"
+$env:APP_VERSION_OVERRIDE = "1.31.35"
 $env:BUILD_MODE = "production"
 pnpm make --arch=x64
 ```
@@ -34,7 +34,7 @@ pnpm make --arch=x64
 然后编译 Inno Setup 安装程序：
 
 ```powershell
-$env:APP_VERSION_OVERRIDE = "1.31.31"
+$env:APP_VERSION_OVERRIDE = "1.31.35"
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer\stagewise-pro.iss
 ```
 

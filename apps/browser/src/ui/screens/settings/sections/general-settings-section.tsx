@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@stagewise/stage-ui/components/button';
 import { OverlayScrollbar } from '@stagewise/stage-ui/components/overlay-scrollbar';
 import { Select } from '@stagewise/stage-ui/components/select';
@@ -301,6 +301,7 @@ function AutoCompactContextSetting() {
   );
   const updatePreferences = useKartonProcedure((p) => p.preferences.update);
   const [localThreshold, setLocalThreshold] = useState(autoCompactThreshold);
+  const thresholdInteractedRef = useRef(false);
 
   useEffect(() => {
     setLocalThreshold(autoCompactThreshold);
@@ -316,6 +317,10 @@ function AutoCompactContextSetting() {
   };
 
   const commitThreshold = async (value: number) => {
+    // Slider 挂载时也会触发一次 commit，未发生用户交互时不要写回偏好。
+    if (!thresholdInteractedRef.current) return;
+    thresholdInteractedRef.current = false;
+
     const next = Math.max(20, Math.min(80, Math.round(value)));
     if (next === autoCompactThreshold) return;
     const patch: Patch = {
@@ -324,6 +329,11 @@ function AutoCompactContextSetting() {
       value: next,
     };
     await updatePreferences([patch]);
+  };
+
+  const handleThresholdChange = (value: number) => {
+    thresholdInteractedRef.current = true;
+    setLocalThreshold(value);
   };
 
   return (
@@ -368,7 +378,7 @@ function AutoCompactContextSetting() {
             step={5}
             ariaLabel="Compaction threshold"
             thickness="default"
-            onValueChange={setLocalThreshold}
+            onValueChange={handleThresholdChange}
             onValueCommitted={commitThreshold}
           />
           <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">

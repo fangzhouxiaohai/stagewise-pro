@@ -9,6 +9,7 @@ import {
   TooltipContent,
 } from '@stagewise/stage-ui/components/tooltip';
 import { ToolPartUI } from './tool-part-ui';
+import { useTranslatedSubtree } from '@ui/i18n/use-translated-subtree';
 
 export const ToolPartUINotCollapsible = memo(
   ({
@@ -28,6 +29,7 @@ export const ToolPartUINotCollapsible = memo(
     icon?: React.ReactNode;
     content?: React.ReactNode;
   }) => {
+    const translatedRef = useTranslatedSubtree<HTMLDivElement>();
     const trigger = useMemo(() => {
       if (part.state === 'output-available') {
         return (
@@ -95,7 +97,9 @@ export const ToolPartUINotCollapsible = memo(
     ]);
 
     return minimal ? (
-      trigger
+      <div ref={translatedRef} data-tool-ui="" className="contents">
+        {trigger}
+      </div>
     ) : (
       <ToolPartUI trigger={trigger} content={content} />
     );
