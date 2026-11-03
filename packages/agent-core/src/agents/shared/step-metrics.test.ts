@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   computeTokensPerSecond,
   countStreamedContentChars,
-  estimateLiveTokensPerSecond,
 } from './step-metrics';
 
 describe('countStreamedContentChars', () => {
@@ -50,24 +49,5 @@ describe('computeTokensPerSecond', () => {
     expect(
       computeTokensPerSecond(100, 0, Number.POSITIVE_INFINITY),
     ).toBeUndefined();
-  });
-});
-
-describe('estimateLiveTokensPerSecond', () => {
-  it('按已输出字符数估算实时速度', () => {
-    // 400 字符 ≈ 100 token，1 秒内完成 → 100 tok/s。
-    expect(estimateLiveTokensPerSecond(400, 1_000, 2_000)).toBe(100);
-  });
-
-  it('没有内容或时长非法时返回 undefined', () => {
-    expect(estimateLiveTokensPerSecond(0, 1_000, 2_000)).toBeUndefined();
-    expect(
-      estimateLiveTokensPerSecond(Number.NaN, 1_000, 2_000),
-    ).toBeUndefined();
-    expect(estimateLiveTokensPerSecond(400, 2_000, 2_000)).toBeUndefined();
-  });
-
-  it('少量字符至少按 1 个 token 计算', () => {
-    expect(estimateLiveTokensPerSecond(1, 1_000, 2_000)).toBe(1);
   });
 });

@@ -88,7 +88,6 @@ import {
 import {
   computeTokensPerSecond,
   countStreamedContentChars,
-  estimateLiveTokensPerSecond,
 } from './shared/step-metrics';
 import { appendGlobalSystemPrompt } from './shared/system-prompt';
 import { AgentMemoryWriter, type MemoryWriteReason } from './shared/memory';
@@ -656,8 +655,6 @@ export abstract class BaseAgent<
   private _generationStartedAt = 0;
   private _generationEndedAt = 0;
   private _lastStreamedContentChars = 0;
-  /** 流式阶段实时速度的上次上报时间，用于节流。 */
-  private _lastLiveSpeedUpdateAt = 0;
   private _stepProviderMode = '';
   private _stepCodingPlanId: string | undefined;
   private _stepProviderType: string | undefined;
@@ -1750,7 +1747,6 @@ export abstract class BaseAgent<
     this._generationStartedAt = 0;
     this._generationEndedAt = 0;
     this._lastStreamedContentChars = 0;
-    this._lastLiveSpeedUpdateAt = 0;
     // Reset continuation flag at the start of every step so a leftover
     // value from a prior aborted step cannot leak into the tail.
     this._pendingContinue = null;
@@ -2978,13 +2974,17 @@ export abstract class BaseAgent<
     result: StepResult<ToolSet>,
   ): Promise<{ shouldRun: boolean; flushQueue: boolean }> {
     // 生成速度：只用流式内容增长的窗口，避免把工具执行时间算进去。
-    this.state.commands.setStepTokensPerSecond({
-      tokensPerSecond: computeTokensPerSecond(
-        result.usage.outputTokens,
-        this._generationStartedAt,
-        this._generationEndedAt,
-      ),
-    });
+    // 没有可测输出时保留上一次有效速度，不要清空为 undefined。
+    const stepTokensPerSecond = computeTokensPerSecond(
+      result.usage.outputTokens,
+      this._generationStartedAt,
+      this._generationEndedAt,
+    );
+    if (stepTokensPerSecond !== undefined) {
+      this.state.commands.setStepTokensPerSecond({
+        tokensPerSecond: stepTokensPerSecond,
+      });
+    }
 
     // 解析当前模型上下文窗口：既用于记录给 UI（保证指示器与后端阈值
     // 使用同一口径），也用于自动压缩触发判断。解析失败时回退到上一次
@@ -3507,25 +3507,6 @@ export abstract class BaseAgent<
         if (this._generationStartedAt === 0) this._generationStartedAt = now;
         this._generationEndedAt = now;
         this._lastStreamedContentChars = streamedChars;
-
-        // 流式阶段每 400ms 上报一次估算速度，让界面在生成过程中就能持续
-        // 显示 tok/s，而不是等到整个步骤结束。最终会用真实 usage 覆盖。
-        if (
-          this._lastLiveSpeedUpdateAt === 0 ||
-          now - this._lastLiveSpeedUpdateAt >= 400
-        ) {
-          this._lastLiveSpeedUpdateAt = now;
-          const liveTokensPerSecond = estimateLiveTokensPerSecond(
-            streamedChars,
-            this._generationStartedAt,
-            now,
-          );
-          if (liveTokensPerSecond !== undefined) {
-            this.state.commands.setStepTokensPerSecond({
-              tokensPerSecond: liveTokensPerSecond,
-            });
-          }
-        }
       }
 
       this.state.commands.mergeUIMessageStream({

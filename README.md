@@ -86,7 +86,7 @@ pnpm test
 ```bash
 cd apps/browser
 $env:RELEASE_CHANNEL="release"
-$env:APP_VERSION_OVERRIDE="1.31.27"
+$env:APP_VERSION_OVERRIDE="1.31.28"
 $env:BUILD_MODE="production"
 pnpm make --arch=x64
 ```
