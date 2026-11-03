@@ -53,3 +53,27 @@ export function computeTokensPerSecond(
   }
   return Math.round(tokensPerSecond);
 }
+
+/** 流式阶段用字符数估算 token 的粗略比例（约 4 字符 / token）。 */
+const STREAM_CHARS_PER_TOKEN = 4;
+
+/**
+ * 流式生成过程中估算实时速度（token/秒）。
+ *
+ * 流式阶段拿不到最终 usage，只能按已输出字符数折算 token；最终速度会在
+ * 步骤结束时用真实 usage 覆盖。
+ */
+export function estimateLiveTokensPerSecond(
+  streamedChars: number,
+  startedAt: number,
+  now: number,
+): number | undefined {
+  if (!Number.isFinite(streamedChars) || streamedChars <= 0) {
+    return undefined;
+  }
+  const estimatedTokens = Math.max(
+    1,
+    Math.round(streamedChars / STREAM_CHARS_PER_TOKEN),
+  );
+  return computeTokensPerSecond(estimatedTokens, startedAt, now);
+}

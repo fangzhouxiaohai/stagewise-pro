@@ -5,6 +5,7 @@ const dictionary: Record<string, string> = {
   'Keep app awake while agents work': '在智能体工作时保持应用唤醒',
   'Always allow': '始终允许',
   Save: '保存',
+  Rename: '重命名',
 };
 
 const translate = (text: string) => dictionary[text] ?? text;
@@ -77,5 +78,23 @@ describe('createUiTranslator', () => {
     expect(node.textContent).toBe('保存');
     translator.stop();
     vi.useRealTimers();
+  });
+
+  it('弹层挂载时立即翻译菜单项', async () => {
+    renderBody('<div id="root"></div>');
+    const translator = createUiTranslator(translate);
+    translator.start();
+
+    const menu = document.createElement('div');
+    menu.setAttribute('role', 'menu');
+    const item = document.createElement('button');
+    item.textContent = 'Rename';
+    menu.appendChild(item);
+    document.getElementById('root')!.appendChild(menu);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(item.textContent).toBe('重命名');
+    translator.stop();
   });
 });

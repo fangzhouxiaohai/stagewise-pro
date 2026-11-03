@@ -115,6 +115,15 @@ export const ZH_OVERRIDES: Readonly<Record<string, string>> = {
   'Open the data folder for troubleshooting or reset stagewise to a clean setup.':
     '打开数据文件夹以进行故障排除，或将 stagewise pro 重置为干净配置。',
 
+  // 右键菜单
+  'Fork chat': '复刻对话',
+  'Mark as unread': '标记为未读',
+  Unpin: '取消全局置顶',
+  Archive: '归档',
+  'Permanently delete': '永久删除',
+  'Copy instance ID': '复制实例 ID',
+  'Open data directory': '打开数据目录',
+
   // 明暗主题切换
   'Switch to dark mode': '切换到暗黑模式',
   'Switch to light mode': '切换到浅色模式',

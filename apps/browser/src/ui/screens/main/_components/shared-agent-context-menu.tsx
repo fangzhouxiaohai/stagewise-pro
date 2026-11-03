@@ -2,6 +2,7 @@ import { Menu as MenuBase } from '@base-ui/react/menu';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@stagewise/stage-ui/lib/utils';
 import { useKartonProcedure, useKartonState } from '@ui/hooks/use-karton';
+import { translateUiString } from '@ui/i18n/dictionary';
 import { IconTrash2Outline24 } from '@stagewise/icons';
 import { ArchiveIcon } from 'lucide-react';
 import {
@@ -132,6 +133,9 @@ export const SharedAgentContextMenuHost = memo(
     // small visual margin; same padding used by DeleteConfirmPopover.
     const isMacOs = useKartonState((s) => s.appInfo.platform === 'darwin');
     const isFullScreen = useKartonState((s) => s.appInfo.isFullScreen);
+    const uiLanguage = useKartonState((s) => s.preferences.general.language);
+    const localize = (text: string) =>
+      uiLanguage === 'en' ? text : translateUiString(text);
     const collisionPadding = useMemo(
       () => (isMacOs && !isFullScreen ? { top: 40 } : undefined),
       [isMacOs, isFullScreen],
@@ -223,7 +227,7 @@ export const SharedAgentContextMenuHost = memo(
                 }}
               >
                 <IconPen2Outline18 className="size-3.5 shrink-0" />
-                <span>Rename</span>
+                <span>{localize('Rename')}</span>
               </AgentMenuItem>
               <AgentMenuItem
                 onClick={() => {
@@ -232,7 +236,7 @@ export const SharedAgentContextMenuHost = memo(
                 }}
               >
                 <IconCopyOutline18 className="size-3.5 shrink-0" />
-                <span>Fork chat</span>
+                <span>{localize('Fork chat')}</span>
               </AgentMenuItem>
               {canMarkAsUnread && (
                 <AgentMenuItem
@@ -242,7 +246,7 @@ export const SharedAgentContextMenuHost = memo(
                   }}
                 >
                   <IconEnvelopeOutline18 className="size-3.5 shrink-0" />
-                  <span>Mark as unread</span>
+                  <span>{localize('Mark as unread')}</span>
                 </AgentMenuItem>
               )}
               {togglePinned && (
@@ -257,7 +261,7 @@ export const SharedAgentContextMenuHost = memo(
                   ) : (
                     <IconPinTackOutline18 className="size-3.5 shrink-0" />
                   )}
-                  <span>{isPinned ? 'Unpin' : 'Pin globally'}</span>
+                  <span>{localize(isPinned ? 'Unpin' : 'Pin globally')}</span>
                 </AgentMenuItem>
               )}
               <AgentMenuItem
@@ -267,7 +271,7 @@ export const SharedAgentContextMenuHost = memo(
                 }}
               >
                 <ArchiveIcon className="size-3.5 shrink-0" />
-                <span>Archive</span>
+                <span>{localize('Archive')}</span>
               </AgentMenuItem>
               {canDelete !== false && (
                 <AgentMenuItem
@@ -277,7 +281,7 @@ export const SharedAgentContextMenuHost = memo(
                   }}
                 >
                   <IconTrash2Outline24 className="size-3.5 shrink-0" />
-                  <span>Permanently delete</span>
+                  <span>{localize('Permanently delete')}</span>
                 </AgentMenuItem>
               )}
               {showDev && (
@@ -290,7 +294,7 @@ export const SharedAgentContextMenuHost = memo(
                     }}
                   >
                     <IconCopyIdOutline18 className="size-3.5 shrink-0" />
-                    <span>Copy instance ID</span>
+                    <span>{localize('Copy instance ID')}</span>
                   </AgentMenuItem>
                   <AgentMenuItem
                     onClick={() => {
@@ -299,7 +303,7 @@ export const SharedAgentContextMenuHost = memo(
                     }}
                   >
                     <IconFolderOpenOutline18 className="size-3.5 shrink-0" />
-                    <span>Open data directory</span>
+                    <span>{localize('Open data directory')}</span>
                   </AgentMenuItem>
                 </>
               )}

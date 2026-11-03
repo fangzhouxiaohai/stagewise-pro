@@ -26,6 +26,14 @@ const SKIP_SELECTOR = [
   '.xterm',
 ].join(',');
 
+/** 弹层节点：右键菜单、下拉框、对话框等。 */
+const POPUP_SELECTOR = [
+  '[role="menu"]',
+  '[role="listbox"]',
+  '[role="dialog"]',
+  '[role="alertdialog"]',
+].join(',');
+
 export interface UiTranslator {
   start: () => void;
   stop: () => void;
@@ -176,6 +184,7 @@ export function createUiTranslator(
   let scanTimer: ReturnType<typeof setTimeout> | null = null;
   let lastScanAt = 0;
   let listenersAttached = false;
+  let popupObserver: MutationObserver | null = null;
   const startupScanTimers: Array<ReturnType<typeof setTimeout>> = [];
 
   function runScan() {
@@ -222,10 +231,33 @@ export function createUiTranslator(
         document.addEventListener('click', handleInteraction, true);
         document.addEventListener('keydown', handleInteraction, true);
         document.addEventListener('focusin', handleInteraction, true);
+        document.addEventListener('contextmenu', handleInteraction, true);
         // 悬浮提示（Tooltip）是悬停时才挂载到 portal 的文本，补一个指针
         // 移入触发，保证新按钮的提示也能翻译。
         document.addEventListener('pointerover', handleInteraction, true);
       }
+
+      // 右键菜单、下拉框、对话框在打开后才挂载到 portal。只观察这类弹层，
+      // 在 MutationObserver 回调（绘制前）里同步翻译，避免先显示英文再替换；
+      // 不观察整页，避免 Virtuoso 布局反馈环。
+      popupObserver = new MutationObserver((records) => {
+        if (!active) return;
+        for (const record of records) {
+          for (const node of Array.from(record.addedNodes)) {
+            if (!(node instanceof Element)) continue;
+            if (node.matches(POPUP_SELECTOR)) {
+              walk(node);
+              continue;
+            }
+            const popup = node.querySelector(POPUP_SELECTOR);
+            if (popup) walk(popup);
+          }
+        }
+      });
+      popupObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
     },
     stop() {
       if (!active) return;
@@ -234,6 +266,8 @@ export function createUiTranslator(
         clearTimeout(scanTimer);
         scanTimer = null;
       }
+      popupObserver?.disconnect();
+      popupObserver = null;
       while (startupScanTimers.length > 0) {
         clearTimeout(startupScanTimers.pop());
       }
@@ -242,6 +276,7 @@ export function createUiTranslator(
         document.removeEventListener('click', handleInteraction, true);
         document.removeEventListener('keydown', handleInteraction, true);
         document.removeEventListener('focusin', handleInteraction, true);
+        document.removeEventListener('contextmenu', handleInteraction, true);
         document.removeEventListener('pointerover', handleInteraction, true);
       }
       restoreAll();

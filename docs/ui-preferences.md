@@ -18,7 +18,8 @@
     编辑器、Monaco、终端，避免翻译用户内容或模型输出。
 
 已覆盖：设置页全部导航与章节、聊天输入框、侧栏、命令面板、压缩/速度提示、
-审批模式菜单、常用弹窗和错误提示。
+右键菜单与下拉框（弹层挂载时、绘制前同步翻译）、审批模式菜单、
+常用弹窗和错误提示。
 
 保留英文（有意或暂未覆盖）：模型与服务商品牌名、模型自带描述、原生应用菜单、
 外部 ACP 代理（Claude Code/Codex/OpenCode）自身的输出。
@@ -79,6 +80,16 @@
 - 点击：在点击位置生成水波纹，延迟 260ms 关闭设置页，保证动画可见。
 - 实现：`settings/sidebar.tsx` 的 `SettingsBackButton` 与
   `browser-base.css` 中的 `.settings-back-button` / `.settings-back-ripple`。
+
+## 二点八、上下文占用与生成速度
+
+- 设置 → 智能体 → 常规中的“显示上下文占用与速度”打开后，模型选择器旁的
+  百分比与速度区域**始终显示**；暂无数据时显示 `-- tok/s`。
+- 流式生成过程中，Agent 每 400ms 用已输出字符数估算一次速度并写入状态，
+  界面因此能实时看到 `tok/s` 变化，不需要等整个步骤或对话结束。
+- 步骤结束时用真实 usage 计算最终速度并覆盖估算值；工具执行时间不计入窗口。
+- 实现：`step-metrics.ts` 的 `estimateLiveTokensPerSecond`（含单测）、
+  `base-agent.ts` 流式循环中的节流上报、`context-usage-ring.tsx` 的固定显示。
 
 ## 三、默认工具审批模式（默认 Always allow）
 
@@ -155,7 +166,7 @@ React 重渲染、Virtuoso 列表测量形成了“翻译 → 重排 → 重渲�
 
 ## 七、安装与验证
 
-- 安装程序：`stagewise-pro-1.31.26-x64-setup.exe`（Inno Setup，当前用户安装）。
+- 安装程序：`stagewise-pro-1.31.27-x64-setup.exe`（Inno Setup，当前用户安装）。
   - 默认安装到 `E:\softs\stagewise-pro`；
   - E 盘不存在时默认 `C:\softs\stagewise-pro`；
   - 两个盘都不可用时停留在目录选择页，由用户指定位置；

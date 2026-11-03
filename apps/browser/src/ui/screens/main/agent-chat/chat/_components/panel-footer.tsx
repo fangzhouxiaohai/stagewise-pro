@@ -1977,8 +1977,8 @@ export const ChatPanelFooter = memo(function ChatPanelFooter({
             onModelChange={handleModelChange}
             onStop={canStopAgent ? stableAbortAgent : undefined}
             showContextUsageRing={
-              !!displayedUsedTokens &&
-              (showContextStats || isVerboseMode || contextUsed > 80)
+              showContextStats ||
+              (!!displayedUsedTokens && (isVerboseMode || contextUsed > 80))
             }
             contextUsedPercentage={contextUsed}
             contextUsedKb={displayedUsedTokens ? displayedUsedTokens / 1000 : 0}

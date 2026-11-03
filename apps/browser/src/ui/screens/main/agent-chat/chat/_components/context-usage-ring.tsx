@@ -36,7 +36,9 @@ export const ContextUsageRing = memo(function ContextUsageRing({
     return 'text-primary-foreground';
   }, [percentage]);
 
-  const speedLabel = showPercentage ? formatTokenSpeed(tokensPerSecond) : null;
+  const speedLabel = showPercentage
+    ? (formatTokenSpeed(tokensPerSecond) ?? '-- tok/s')
+    : null;
 
   const size = 16;
   const strokeWidth = 2;

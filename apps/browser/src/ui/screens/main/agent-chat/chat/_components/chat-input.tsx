@@ -894,7 +894,8 @@ export const ChatInput = memo(function ChatInput({
         (showModelSelect ||
           showToolApprovalSelect ||
           onStop ||
-          (showContextUsageRing && contextUsedPercentage > 0)) && (
+          (showContextUsageRing &&
+            (contextUsedPercentage > 0 || showContextStats))) && (
           <div
             className={cn(
               'relative flex shrink-0 flex-wrap items-center gap-2 pl-1 *:shrink-0',
@@ -904,15 +905,18 @@ export const ChatInput = memo(function ChatInput({
             {showModelSelect && (
               <ModelSelect onModelChange={handleModelSelectChange} />
             )}
-            {showContextUsageRing && contextUsedPercentage > 0 && (
-              <ContextUsageRing
-                percentage={contextUsedPercentage}
-                usedKb={contextUsedKb}
-                maxKb={contextMaxKb}
-                showPercentage={showContextStats}
-                tokensPerSecond={showContextStats ? tokensPerSecond : undefined}
-              />
-            )}
+            {showContextUsageRing &&
+              (contextUsedPercentage > 0 || showContextStats) && (
+                <ContextUsageRing
+                  percentage={contextUsedPercentage}
+                  usedKb={contextUsedKb}
+                  maxKb={contextMaxKb}
+                  showPercentage={showContextStats}
+                  tokensPerSecond={
+                    showContextStats ? tokensPerSecond : undefined
+                  }
+                />
+              )}
             {showToolApprovalSelect && (
               <ToolApprovalSelect
                 onToolApprovalChange={handleToolApprovalChange}
