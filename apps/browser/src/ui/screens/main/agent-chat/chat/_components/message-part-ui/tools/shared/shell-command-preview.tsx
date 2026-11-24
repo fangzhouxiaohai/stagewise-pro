@@ -13,7 +13,8 @@ export function ShellCommandPreview({
   prefix?: '$' | '→';
 }) {
   return (
-    <div className={cn('px-2 py-1', className)}>
+    // 命令与输出都是原始数据，不参与界面翻译（例如输出恰好是 "Done"）。
+    <div data-i18n-skip className={cn('px-2 py-1', className)}>
       <div
         className={cn(
           'whitespace-pre-wrap break-all pb-1 font-mono text-muted-foreground text-xs',

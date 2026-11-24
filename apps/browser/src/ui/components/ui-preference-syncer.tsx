@@ -22,6 +22,8 @@ export function UiPreferenceSyncer() {
     document.documentElement.style.fontSize = `${textSizeToRootFontSize(uiTextSize)}px`;
   }, [uiTextSize]);
 
+  // 语言变化时启动/停止翻译层。只依赖语言：路由切换若也触发 stop/start，
+  // 每次都会把整页恢复成英文再重新翻译。
   useLayoutEffect(() => {
     document.documentElement.lang = language === 'en' ? 'en' : 'zh-CN';
     setCurrentUiLanguage(language === 'en' ? 'en' : 'zh-CN');
@@ -32,10 +34,13 @@ export function UiPreferenceSyncer() {
     }
 
     uiTranslator.start();
-    // 路由/设置分区切换后在浏览器绘制前完成翻译。
-    uiTranslator.translateNow();
-
     return () => uiTranslator.stop();
+  }, [language]);
+
+  // 路由/设置分区切换后在浏览器绘制前完成翻译。
+  useLayoutEffect(() => {
+    if (language === 'en') return;
+    uiTranslator.translateNow();
   }, [language, appScreenMode, settingsSection]);
 
   return null;

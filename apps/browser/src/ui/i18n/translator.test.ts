@@ -45,6 +45,38 @@ describe('createUiTranslator', () => {
     expect(button.textContent).toBe('Save');
   });
 
+  it('停止时不覆盖翻译后被界面更新过的文本与属性', () => {
+    renderBody('<button title="Save">Save</button>');
+    const translator = createUiTranslator(translate);
+    translator.start();
+
+    const button = document.querySelector('button')!;
+    expect(button.textContent).toBe('保存');
+
+    // 模拟 React 在翻译之后更新了文案。
+    button.firstChild!.nodeValue = 'Saving...';
+    button.setAttribute('title', 'Saving...');
+
+    translator.stop();
+    expect(button.textContent).toBe('Saving...');
+    expect(button.getAttribute('title')).toBe('Saving...');
+  });
+
+  it('重新启动后以最新英文为原文', () => {
+    renderBody('<span>Save</span>');
+    const translator = createUiTranslator(translate);
+    translator.start();
+    translator.stop();
+
+    const span = document.querySelector('span')!;
+    span.firstChild!.nodeValue = 'Rename';
+    translator.start();
+    expect(span.textContent).toBe('重命名');
+
+    translator.stop();
+    expect(span.textContent).toBe('Rename');
+  });
+
   it('跳过 data-i18n-skip、代码与可编辑区域', () => {
     renderBody(
       '<div data-i18n-skip>Always allow</div><code>Save</code><div contenteditable="true">Save</div>',

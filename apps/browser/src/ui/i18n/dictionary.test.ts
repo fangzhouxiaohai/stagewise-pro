@@ -18,6 +18,12 @@ describe('translateUiString', () => {
     expect(translateUiString('Context compressed - 1 message summarized')).toBe(
       '上下文已压缩：已折叠 1 条较早消息',
     );
+    expect(translateUiString('Folded 3 earlier messages into a summary.')).toBe(
+      '已将 3 条较早消息折叠为摘要。',
+    );
+    expect(translateUiString('Folded 1 earlier message into a summary.')).toBe(
+      '已将 1 条较早消息折叠为摘要。',
+    );
   });
 
   it('侧栏日期分组标签翻译', () => {

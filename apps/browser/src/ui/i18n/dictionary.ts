@@ -58,6 +58,10 @@ const PATTERNS: ReadonlyArray<{
     pattern: /^(\d+) earlier messages summarized$/,
     translate: (m) => `已折叠 ${m[1]} 条较早消息`,
   },
+  {
+    pattern: /^Folded (\d+) earlier messages? into a summary\.$/,
+    translate: (m) => `已将 ${m[1]} 条较早消息折叠为摘要。`,
+  },
 ];
 
 /**

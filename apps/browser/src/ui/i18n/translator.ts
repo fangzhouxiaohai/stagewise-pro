@@ -175,6 +175,13 @@ export function createUiTranslator(
     }
   }
 
+  /**
+   * 恢复英文原文。
+   *
+   * 只恢复仍是我们写入译文的节点：翻译之后 React 可能已经把节点改成了
+   * 新的英文（例如 "Save" → "Saving..."），此时节点内容已是最新的真实
+   * 文案，用旧原文覆盖会让 DOM 与 React 状态不一致。
+   */
   function restoreAll() {
     const walker = document.createTreeWalker(
       document.body,
@@ -183,15 +190,35 @@ export function createUiTranslator(
     let node: Node | null = walker.nextNode();
     while (node) {
       if (node.nodeType === Node.TEXT_NODE) {
-        const original = originalTexts.get(node as Text);
-        if (original !== undefined) (node as Text).nodeValue = original;
+        const text = node as Text;
+        const original = originalTexts.get(text);
+        const written = writtenTexts.get(text);
+        if (
+          original !== undefined &&
+          written !== undefined &&
+          text.nodeValue === written
+        ) {
+          text.nodeValue = original;
+        }
+        originalTexts.delete(text);
+        writtenTexts.delete(text);
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const store = originalAttributes.get(node as Element);
-        if (store) {
+        const element = node as Element;
+        const store = originalAttributes.get(element);
+        const written = writtenAttributes.get(element);
+        if (store && written) {
           store.forEach((value, name) => {
-            (node as Element).setAttribute(name, value);
+            const writtenValue = written.get(name);
+            if (
+              writtenValue !== undefined &&
+              element.getAttribute(name) === writtenValue
+            ) {
+              element.setAttribute(name, value);
+            }
           });
         }
+        originalAttributes.delete(element);
+        writtenAttributes.delete(element);
       }
       node = walker.nextNode();
     }

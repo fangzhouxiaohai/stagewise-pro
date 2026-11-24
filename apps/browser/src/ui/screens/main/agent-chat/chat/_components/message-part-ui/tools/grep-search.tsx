@@ -21,7 +21,13 @@ export const GrepSearchToolPart = ({
         <span className="truncate font-normal opacity-75">
           {part.output?.result?.totalMatches ?? 0} result
           {part.output?.result?.totalMatches !== 1 ? 's' : ''}
-          {part.input?.query && <> for "{part.input.query}"</>}
+          {part.input?.query && (
+            <>
+              {' for "'}
+              {/* 搜索词是智能体输入，不参与界面翻译。 */}
+              <span data-i18n-skip>{part.input.query}</span>"
+            </>
+          )}
         </span>
       </span>
     ) : undefined;

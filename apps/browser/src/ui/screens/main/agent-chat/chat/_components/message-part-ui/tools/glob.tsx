@@ -22,7 +22,13 @@ export const GlobToolPart = ({
         <span className="truncate font-normal opacity-75">
           {part.output?.result?.totalMatches ?? 0} file
           {part.output?.result?.totalMatches !== 1 ? 's' : ''}
-          {part.input?.pattern && <> matching "{part.input.pattern}"</>}
+          {part.input?.pattern && (
+            <>
+              {' matching "'}
+              {/* 匹配模式是智能体输入，不参与界面翻译。 */}
+              <span data-i18n-skip>{part.input.pattern}</span>"
+            </>
+          )}
         </span>
       </span>
     ) : undefined;

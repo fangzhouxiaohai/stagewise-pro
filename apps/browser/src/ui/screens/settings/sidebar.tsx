@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -39,6 +40,11 @@ function SettingsBackButton({
   const [ripples, setRipples] = useState<BackRipple[]>([]);
   const [isLeaving, setIsLeaving] = useState(false);
   const rippleId = useRef(0);
+  const leaveTimerRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    return () => window.clearTimeout(leaveTimerRef.current);
+  }, []);
 
   const handlePointerEnter = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -72,7 +78,14 @@ function SettingsBackButton({
     setRipples((previous) => [...previous, ripple]);
 
     // 先播放水波，再关闭设置页；立即关闭会导致按钮被卸载、动画看不到。
-    window.setTimeout(() => onClick(), 260);
+    leaveTimerRef.current = window.setTimeout(() => {
+      leaveTimerRef.current = undefined;
+      onClick();
+      // 正常情况下设置页随之卸载；若关闭没有生效，恢复按钮可用，
+      // 避免返回按钮永久处于禁用状态。
+      setIsLeaving(false);
+      setRipples([]);
+    }, 260);
   };
 
   return (
