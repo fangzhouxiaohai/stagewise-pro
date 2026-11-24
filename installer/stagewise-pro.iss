@@ -61,8 +61,10 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: no
 [Code]
 procedure InitializeWizard();
 begin
-  { E 盘不存在时回退到 C 盘；两个盘都不可用时留空，让用户自行选择。 }
-  if not DirExists('E:\') then
+  { E 盘不存在时回退到 C 盘；两个盘都不可用时留空，让用户自行选择。
+    仅在仍是默认的 E 盘路径时回退：升级安装时保留上次选择的目录。 }
+  if (CompareText(WizardForm.DirEdit.Text, 'E:\softs\stagewise-pro') = 0) and
+     (not DirExists('E:\')) then
   begin
     if DirExists('C:\') then
       WizardForm.DirEdit.Text := 'C:\softs\stagewise-pro'

@@ -6,12 +6,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$resolvedTarget = [System.IO.Path]::GetFullPath($Target)
+$softsRoot = 'E:\softs'
+$resolvedTarget = [System.IO.Path]::GetFullPath($Target).TrimEnd('\')
 $resolvedSource = [System.IO.Path]::GetFullPath($Source)
 
-# 仅允许安装到 E:\softs 下，避免误写系统盘。
-if (-not $resolvedTarget.StartsWith('E:\softs\', [System.StringComparison]::OrdinalIgnoreCase)) {
-  throw "目标目录必须位于 E:\softs 下：$resolvedTarget"
+# 仅允许安装到 E:\softs 的子目录，避免误写系统盘；目标不能是 E:\softs 本身，
+# 否则下面的清理会删除其中所有软件。
+if (-not $resolvedTarget.StartsWith("$softsRoot\", [System.StringComparison]::OrdinalIgnoreCase) -or
+    $resolvedTarget.Length -le ($softsRoot.Length + 1)) {
+  throw "目标目录必须是 E:\softs 下的子目录：$resolvedTarget"
 }
 
 $sourceExe = Join-Path $resolvedSource 'stagewise-pro.exe'
@@ -34,7 +37,13 @@ Get-Process -Name 'stagewise-pro' -ErrorAction SilentlyContinue | ForEach-Object
 }
 
 if (Test-Path $resolvedTarget) {
-  Remove-Item -Recurse -Force $resolvedTarget
+  # 只覆盖空目录或旧的 stagewise pro 安装目录，避免误删其他软件。
+  $existingExe = Join-Path $resolvedTarget 'stagewise-pro.exe'
+  $existingItem = Get-ChildItem -LiteralPath $resolvedTarget -Force | Select-Object -First 1
+  if ($existingItem -and -not (Test-Path -LiteralPath $existingExe)) {
+    throw "目标目录已存在且不是 stagewise pro 的安装目录，拒绝覆盖：$resolvedTarget"
+  }
+  Remove-Item -LiteralPath $resolvedTarget -Recurse -Force
 }
 New-Item -ItemType Directory -Path $resolvedTarget -Force | Out-Null
 
