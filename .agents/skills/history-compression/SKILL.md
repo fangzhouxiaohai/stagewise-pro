@@ -20,15 +20,19 @@ All paths are repo-root-relative.
 
 ## Trigger
 
-After every step → `handlePostStep` checks:
+After every step (`handlePostStep`) and before every model request (`runStep` pre-step check):
 
-- 宿主注入策略（浏览器端读取偏好 `agent.autoCompactContext`）：
-  - 开关打开 → `usedTokens > 0.8 × contextWindow`（`DEFAULT_AUTO_COMPACTION_THRESHOLD`，不受绝对上限约束）。
+- 宿主注入策略（浏览器端读取偏好 `agent.autoCompactContext` / `agent.autoCompactThreshold`）：
+  - 开关打开 → `usedTokens > autoCompactThreshold% × contextWindow`（设置滑块 20%–80%，默认 50%；不受绝对上限约束）。
   - 开关关闭 → 不自动压缩，只能通过输入框 `/compact` 手动触发。
 - 未注入策略（CLI、测试）→ `usedTokens > min(compactionThreshold × contextWindow, 100k)`：
   - `compactionThreshold` default **0.65**; chat agent overrides to **0.5**.
   - `100k` hard cap (`HISTORY_COMPRESSION_HARD_CAP_TOKENS`) = 1M-ctx models trigger at the same absolute count as a 200k-context model running near its full window.
-- Runs via `void` (async, non-blocking). Guarded by `_isCompressingHistory` flag → no concurrent runs.
+- Awaited (the step loop waits for the summary). Guarded by `_isCompressingHistory` flag → no concurrent runs.
+- `shouldAutoCompact` 额外排除无效的重复压缩：
+  - 压缩完成后、下一个完整步骤上报真实用量前（`usedTokens` 只是估算值）不再自动压缩；
+  - 上一次自动压缩失败或无可压缩内容且 `usedTokens` 未变化时不重试；
+  - 压缩后的真实用量（`_postCompactionUsageFloor`）本身已超过触发点时，需等用量增长后再压缩，避免小窗口 / 低阈值下每步都压缩。
 - Silent failure — agent keeps going, context overflow later surfaces normal model error.
 - 手动压缩 `agents.compactHistory` RPC → `BaseAgent.compactHistoryNow()` → 复用同一套边界逻辑，返回结构化状态（`compressed` / `skipped` / `unsupported` / `failed`）。
 
@@ -43,8 +47,15 @@ Walk backward from history end:
 2. Else stop once kept-count ≥ floor.
 3. Edge: single last msg > budget → keep just that one, warn.
 4. `boundary < 1` → nothing to compress, skip.
+5. `boundary ≤` index of the last message that already has `compressedHistory` → skip（上下文只从最后一个摘要开始构建，没有越过它的新摘要不会改变实际上下文）。
 
 Then: `messagesToCompact = history.slice(0, boundary)` → compress → write result to `history[boundary].metadata.compressedHistory`.
+
+The `running` compaction state is only published right before the summary call, so the per-step "nothing to compress" checks never flash the UI indicator.
+
+### Chunking
+
+Serialized history above 200k chars is split into chunks (paragraph-aligned), summarized with concurrency 2 and joined. Single-pass calls keep `maxOutputTokens = 20k`; chunk calls use `min(20k, max(4k, targetPerChunk / 2))`. Once any chunk fails on every model, no further chunks are started.
 
 ### Token estimation quirks
 

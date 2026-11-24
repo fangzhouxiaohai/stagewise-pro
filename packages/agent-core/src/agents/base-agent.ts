@@ -632,6 +632,30 @@ export abstract class BaseAgent<
    */
   private _isCompressingHistory = false;
 
+  /**
+   * 最近一次成功压缩的完成时间（epoch ms）。压缩完成后到下一个步骤
+   * 上报真实用量之前，`usedTokens` 只是保留消息的估算值，自动压缩
+   * 不应基于该估算再次触发（否则同一轮会先后压缩两次）。
+   */
+  private _compactionCompletedAt: number | null = null;
+
+  /**
+   * 最近一次成功压缩后、第一个完整步骤上报的真实用量。
+   *
+   * 当它已经高于自动压缩触发点时（系统提示词 + 工具 + 摘要 + 保留消息
+   * 本身就超过了设置的比例），每一步都重新压缩也无法把用量降到阈值以下，
+   * 只会每步白白多一次摘要调用。此时需要用量在该基线之上明显增长后
+   * 才再次自动压缩。
+   */
+  private _postCompactionUsageFloor: number | null = null;
+
+  /**
+   * 上一次未产生压缩结果（失败或无可压缩内容）的自动压缩发生时的
+   * `usedTokens`。用量没有变化时不再重试，避免步骤后检查失败后，
+   * 下一步的步骤前检查立即以同样的输入再失败一次。
+   */
+  private _lastUnproductiveAutoCompactionTokens: number | null = null;
+
   /** Debug utility: tracks model messages per step to report cache stability. */
   private readonly _cacheAnalyzer: MessageCacheAnalyzer;
 
@@ -1882,13 +1906,15 @@ export abstract class BaseAgent<
         hardCapTokens: BaseAgent.HISTORY_COMPRESSION_HARD_CAP_TOKENS,
       });
       if (
-        preStepTriggerTokens !== null &&
-        this.state.get().usedTokens > preStepTriggerTokens
+        this.shouldAutoCompact(
+          preStepTriggerTokens,
+          modelWithOptions.contextWindowSize,
+        )
       ) {
         this.host.logger.debug(
           `[BaseAgent:${this.instanceId}] Pre-step auto-compaction | usedTokens=${this.state.get().usedTokens} | triggerTokens=${preStepTriggerTokens}`,
         );
-        await this.compressHistoryInternal('auto');
+        await this.runAutoCompaction();
         if (this._stepGeneration !== stepGen) return;
       }
     }
@@ -2562,6 +2588,69 @@ export abstract class BaseAgent<
     return await this.compressHistoryInternal('manual');
   }
 
+  /**
+   * 判断当前是否应该触发自动压缩。
+   *
+   * 除了“已用 token 超过触发点”之外，还排除三种无效的重复压缩：
+   * - 刚压缩完、尚未拿到真实用量（`usedTokens` 只是估算值）；
+   * - 上一次自动压缩没有产生结果，且用量没有变化；
+   * - 压缩后的真实用量本身就高于触发点，且之后没有明显增长。
+   */
+  private shouldAutoCompact(
+    triggerTokens: number | null,
+    contextWindowSize: number,
+  ): boolean {
+    if (triggerTokens === null) return false;
+    const usedTokens = this.state.get().usedTokens;
+    if (usedTokens <= triggerTokens) return false;
+    if (this._compactionCompletedAt !== null) return false;
+    if (this._lastUnproductiveAutoCompactionTokens === usedTokens) return false;
+
+    const floor = this._postCompactionUsageFloor;
+    if (floor !== null && floor > triggerTokens) {
+      // 压缩已无法把用量降到触发点以下：等用量在基线之上增长四分之一个
+      // 触发点（且不超过基线到窗口上限的一半）后再压缩。
+      const growthTarget = Math.min(
+        floor + Math.floor(triggerTokens * 0.25),
+        floor + Math.floor(Math.max(0, contextWindowSize - floor) / 2),
+      );
+      if (usedTokens < growthTarget) {
+        this.host.logger.debug(
+          `[BaseAgent:${this.instanceId}] Skipping auto-compaction — compacted context (${floor} tokens) already exceeds trigger (${triggerTokens}); waiting for usage to reach ${growthTarget}.`,
+        );
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * 执行一次自动压缩，并记录未产生结果的尝试，避免以同样的输入重试。
+   */
+  private async runAutoCompaction(): Promise<void> {
+    const usedTokens = this.state.get().usedTokens;
+    const result = await this.compressHistoryInternal('auto');
+    if (result.status === 'compressed') {
+      this._lastUnproductiveAutoCompactionTokens = null;
+    } else if (!(result.status === 'skipped' && result.reason === 'busy')) {
+      this._lastUnproductiveAutoCompactionTokens = usedTokens;
+    }
+  }
+
+  /**
+   * 步骤结束后用真实用量更新压缩基线。
+   *
+   * 只有在压缩完成之后才开始的步骤，其用量才反映压缩后的上下文；
+   * 压缩期间仍在运行的步骤（例如步骤进行中手动 `/compact`）不计入。
+   */
+  private recordPostCompactionUsage(totalTokens: number): void {
+    const completedAt = this._compactionCompletedAt;
+    if (completedAt === null) return;
+    if (this._stepStartTime < completedAt) return;
+    this._compactionCompletedAt = null;
+    this._postCompactionUsageFloor = totalTokens > 0 ? totalTokens : null;
+  }
+
   private async compressHistoryInternal(
     trigger: 'auto' | 'manual',
   ): Promise<HistoryCompactionResult> {
@@ -2576,11 +2665,8 @@ export abstract class BaseAgent<
     }
     this._isCompressingHistory = true;
     const startedAt = Date.now();
-    // 先向 UI 暴露“压缩进行中”，以便展示动画；真正的摘要生成可能
-    // 需要数秒到数十秒。
-    this.state.commands.setCompactionState({
-      compaction: { status: 'running', trigger, startedAt },
-    });
+    // 只有确定要生成摘要时才向 UI 发布“压缩进行中”（见下方）；无可压缩
+    // 内容的检查（每步都可能发生）不应让提示闪现，也不应清掉上一次的结果。
     try {
       const state = this.state.get();
       const { history } = state;
@@ -2632,7 +2718,6 @@ export abstract class BaseAgent<
 
         // Scanned everything, it all fits — nothing to compress
         if (i === 0) {
-          this.state.commands.setCompactionState({ compaction: undefined });
           return { status: 'skipped', reason: 'nothing-to-compact' };
         }
       }
@@ -2646,7 +2731,22 @@ export abstract class BaseAgent<
       }
 
       if (boundaryIndex < 1) {
-        this.state.commands.setCompactionState({ compaction: undefined });
+        return { status: 'skipped', reason: 'nothing-to-compact' };
+      }
+
+      // 上下文只从最后一个带摘要的消息开始构建。新边界若没有越过它，
+      // 写入的摘要不会改变实际上下文，只是重复总结已压缩的内容。
+      let previousBoundaryIndex = -1;
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i]?.metadata?.compressedHistory !== undefined) {
+          previousBoundaryIndex = i;
+          break;
+        }
+      }
+      if (boundaryIndex <= previousBoundaryIndex) {
+        this.host.logger.debug(
+          `[BaseAgent:${this.instanceId}] Skipping history compression — boundary ${boundaryIndex} does not advance past existing summary at ${previousBoundaryIndex}.`,
+        );
         return { status: 'skipped', reason: 'nothing-to-compact' };
       }
 
@@ -2659,7 +2759,6 @@ export abstract class BaseAgent<
 
       const boundaryMessageId = history[boundaryIndex]?.id;
       if (!boundaryMessageId) {
-        this.state.commands.setCompactionState({ compaction: undefined });
         return { status: 'skipped', reason: 'nothing-to-compact' };
       }
 
@@ -2671,6 +2770,11 @@ export abstract class BaseAgent<
       this.host.logger.debug(
         `[BaseAgent:${this.instanceId}] Compressing history (${messagesToCompact.length} messages, keeping ${actualKept})...`,
       );
+
+      // 摘要生成可能需要数秒到数十秒，先向 UI 暴露“压缩进行中”。
+      this.state.commands.setCompactionState({
+        compaction: { status: 'running', trigger, startedAt },
+      });
 
       const compressedHistory = await this.compressHistory(messagesToCompact);
 
@@ -2706,6 +2810,11 @@ export abstract class BaseAgent<
       }
 
       await this.saveState(boundarySeq >= 0 ? [boundarySeq] : undefined);
+
+      // 下一个完整步骤上报的用量才是压缩后的真实用量，见
+      // `recordPostCompactionUsage`。
+      this._compactionCompletedAt = Date.now();
+      this._postCompactionUsageFloor = null;
 
       this.scheduleMemorySnapshotWrite('compression');
       this.state.commands.setCompactionState({
@@ -2983,6 +3092,7 @@ export abstract class BaseAgent<
         ? { contextWindowSize }
         : {}),
     });
+    this.recordPostCompactionUsage(result.usage.totalTokens ?? 0);
 
     this.updateUsageWarning(result);
 
@@ -3046,11 +3156,8 @@ export abstract class BaseAgent<
       this.host.logger.debug(
         `[BaseAgent:${this.instanceId}] Auto-compaction check | usedTokens=${this.state.get().usedTokens} | contextWindow=${contextWindowSize} | triggerTokens=${triggerTokens ?? 'disabled'}`,
       );
-      if (
-        triggerTokens !== null &&
-        this.state.get().usedTokens > triggerTokens
-      ) {
-        await this.compressHistoryInternal('auto');
+      if (this.shouldAutoCompact(triggerTokens, contextWindowSize)) {
+        await this.runAutoCompaction();
       }
     }
 

@@ -1072,6 +1072,78 @@ describe('generateSimpleCompressedHistory', () => {
     expect(callArgs.abortSignal).toBeInstanceOf(AbortSignal);
   });
 
+  it('keeps the 20k output token ceiling for single-pass compression', async () => {
+    generateTextMock.mockResolvedValueOnce({
+      text: 'The assistant provided a valid summary of events.',
+    } as any);
+
+    const mps = makeMockHostModels();
+    await generateSimpleCompressedHistory(makeMessages(4), mps, 'agent-1');
+
+    const callArgs = generateTextMock.mock.calls[0][0] as any;
+    expect(callArgs.maxOutputTokens).toBe(20_000);
+  });
+
+  describe('chunked compression', () => {
+    /** ~700k serialized characters → several 200k-character chunks. */
+    function makeLargeMessages(): AgentMessage[] {
+      const messages = makeMessages(7);
+      for (const message of messages) {
+        message.parts = [{ type: 'text', text: 'x'.repeat(100_000) }];
+      }
+      return messages;
+    }
+
+    it('summarizes each chunk and joins the summaries in order', async () => {
+      generateTextMock.mockImplementation(async () => ({
+        text: `Chunk summary number ${generateTextMock.mock.calls.length} of the conversation.`,
+      }));
+
+      const mps = makeMockHostModels();
+      const result = await generateSimpleCompressedHistory(
+        makeLargeMessages(),
+        mps,
+        'agent-1',
+      );
+
+      const chunkCount = generateTextMock.mock.calls.length;
+      expect(chunkCount).toBeGreaterThan(1);
+      expect(result.split('\n\n')).toHaveLength(chunkCount);
+      for (const [args] of generateTextMock.mock.calls as any[]) {
+        expect(args.maxOutputTokens).toBeLessThan(20_000);
+        expect(args.maxOutputTokens).toBeGreaterThanOrEqual(4_000);
+      }
+    });
+
+    it('stops starting new chunks once one chunk has failed', async () => {
+      const messages = makeLargeMessages();
+      messages[0]!.parts = [
+        { type: 'text', text: `FIRST-CHUNK-MARKER ${'x'.repeat(100_000)}` },
+      ];
+      // The first chunk fails immediately on every model, while the other
+      // worker's chunk succeeds only after a delay.
+      generateTextMock.mockImplementation((async (args: any) => {
+        const prompt = args.messages.find((m: any) => m.role === 'user');
+        if (String(prompt.content).includes('FIRST-CHUNK-MARKER')) {
+          throw new Error('model unavailable');
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        return { text: 'A delayed but valid chunk summary of events.' };
+      }) as any);
+
+      const mps = makeMockHostModels();
+      const promise = expect(
+        generateSimpleCompressedHistory(messages, mps, 'agent-1'),
+      ).rejects.toThrow('model unavailable');
+      await vi.runAllTimersAsync();
+      await promise;
+
+      // Five failed attempts for the first chunk plus the one chunk the
+      // second worker had already started. No later chunk may start.
+      expect(generateTextMock).toHaveBeenCalledTimes(6);
+    });
+  });
+
   it('uses second-person "you" POV and includes key prompt elements', async () => {
     generateTextMock.mockResolvedValueOnce({
       text: 'You implemented the navbar and the user was satisfied.',
